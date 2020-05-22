@@ -22,14 +22,14 @@ for (let y = 0; y < gridHeight; y++) {
   }
 }
 
-const enemies = [{
-  x: 0,
-  y: cellSize * 3 + cellSize / 2 - 5,
-  speed: 300, // pixels per second
-  size: 10,
-}];
+const turrets = [];
+
+const projectiles = [];
+
+const enemies = [];
 
 const path = [
+  [-1, 3],
   [0, 3],
   [1, 3],
   [1, 4],
@@ -51,6 +51,7 @@ const path = [
   [5, 2],
   [5, 1],
   [5, 0],
+  [5, -1],
 ];
 
 let lastRender = Date.now();
@@ -59,6 +60,15 @@ const draw = () => {
   const now = Date.now();
   const delta = now - lastRender;
   const deltaSeconds = delta / 1000;
+
+  if (Math.random() > 0.98) {
+    enemies.push({
+      x: -cellSize / 2,
+      y: cellSize * 3 + cellSize / 2 - 5,
+      speed: 100, // pixels per second
+      size: 10,
+    });
+  }
 
   // background
   ctx.fillStyle = '#222';
@@ -69,28 +79,6 @@ const draw = () => {
   path.forEach(segment => {
     ctx.fillRect(segment[0] * cellSize, segment[1] * cellSize, cellSize, cellSize);
   });
-
-  for (const enemy of enemies) {
-    const cellX = Math.floor(enemy.x / cellSize);
-    const cellY = Math.floor(enemy.y / cellSize);
-    const segmentIndex = path.findIndex(segment => segment[0] === cellX && segment[1] === cellY);
-    const nextSegment = path[segmentIndex + 1];
-    if (nextSegment[0] > cellX) {
-      enemy.x += enemy.speed * deltaSeconds;
-    }
-    else if (nextSegment[0] < cellX) {
-      enemy.x -= enemy.speed * deltaSeconds;
-    }
-    else if (nextSegment[1] > cellY) {
-      enemy.y += enemy.speed * deltaSeconds;
-    }
-    else if (nextSegment[1] < cellY) {
-      enemy.y -= enemy.speed * deltaSeconds;
-    }
-
-    ctx.fillStyle = '#0f0';
-    ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
-  }
 
   // grid
   ctx.strokeStyle = '#ccc';
@@ -111,6 +99,95 @@ const draw = () => {
     ctx.closePath();
   }
 
+  for (const enemy of enemies) {
+    const cellX = Math.floor(enemy.x / cellSize);
+    const cellY = Math.floor(enemy.y / cellSize);
+    const segmentIndex = path.findIndex(segment => segment[0] === cellX && segment[1] === cellY);
+    const nextSegment = path[segmentIndex + 1];
+    if (!nextSegment) {
+      continue;
+    }
+    if (nextSegment[0] > cellX) {
+      enemy.x += enemy.speed * deltaSeconds;
+    }
+    else if (nextSegment[0] < cellX) {
+      enemy.x -= enemy.speed * deltaSeconds;
+    }
+    else if (nextSegment[1] > cellY) {
+      enemy.y += enemy.speed * deltaSeconds;
+    }
+    else if (nextSegment[1] < cellY) {
+      enemy.y -= enemy.speed * deltaSeconds;
+    }
+
+    ctx.fillStyle = '#0f0';
+    ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+  }
+
+  for (const turret of turrets) {
+    const x = turret.gridX * cellSize + cellSize / 2;
+    const y = turret.gridY * cellSize + cellSize / 2;
+    ctx.fillStyle = '#00f';
+    ctx.beginPath();
+    ctx.arc(x, y, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
+    const radiusPx = turret.radius * cellSize;
+    ctx.strokeStyle = '#00f';
+    ctx.beginPath();
+    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.closePath();
+
+    if (now - turret.lastShot > turret.shotInterval) {
+      let didShoot = false;
+      for (const idx in enemies) {
+        if (didShoot) {
+          continue;
+        }
+        const enemy = enemies[idx];
+        const dist = Math.hypot(x - enemy.x, y - enemy.y);
+        if (dist < radiusPx) {
+          projectiles.push({
+            x,
+            y,
+            speed: turret.projectileSpeed,
+            enemyIndex: idx,
+          });
+          turret.lastShot = now;
+          didShoot = true;
+        }
+      }
+    }
+  }
+
+  for (let i = projectiles.length - 1; i > -1; i--) {
+    const projectile = projectiles[i];
+    const enemy = enemies[projectile.enemyIndex];
+
+    const deltaX = enemy.x - projectile.x;
+    const deltaY = enemy.y - projectile.y;
+    const angle = Math.atan2(deltaY, deltaX);
+    const deltaDistance = Math.hypot(deltaX, deltaY);
+
+    const distance = Math.min(deltaDistance, projectile.speed * deltaSeconds);
+
+    projectile.x = Math.cos(angle) * distance + projectile.x;
+    projectile.y = Math.sin(angle) * distance + projectile.y;
+
+    if (Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) < 5) {
+      projectiles.splice(i, 0);
+      continue;
+    }
+
+    ctx.fillStyle = '#f00';
+    ctx.beginPath();
+    ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+  }
+
   // cell selection
   let xCell = Math.floor(mouseX / cellSize);
   let yCell = Math.floor(mouseY / cellSize);
@@ -128,6 +205,21 @@ const onMouseMove = e => {
   mouseY = e.offsetY;
 };
 
+const onClick = e => {
+  const gridX = Math.floor(mouseX / cellSize);
+  const gridY = Math.floor(mouseY / cellSize);
+
+  turrets.push({
+    gridX,
+    gridY,
+    radius: 3, // cells
+    lastShot: 0,
+    shotInterval: 500,
+    projectileSpeed: 200, // pixels per second
+  });
+};
+
 canvas.addEventListener('mousemove', onMouseMove);
+canvas.addEventListener('click', onClick);
 
 requestAnimationFrame(draw);
