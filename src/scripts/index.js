@@ -25,7 +25,7 @@ for (let y = 0; y < gridHeight; y++) {
 const enemies = [{
   x: 0,
   y: cellSize * 3 + cellSize / 2 - 5,
-  speed: 100, // pixels per second
+  speed: 300, // pixels per second
   size: 10,
 }];
 
@@ -60,9 +60,16 @@ const draw = () => {
   const delta = now - lastRender;
   const deltaSeconds = delta / 1000;
 
-  ctx.clearRect(0, 0, gameWidth, gameHeight);
+  // background
+  ctx.fillStyle = '#222';
+  ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-  // bug: can't go -x
+  // path
+  ctx.fillStyle = '#888';
+  path.forEach(segment => {
+    ctx.fillRect(segment[0] * cellSize, segment[1] * cellSize, cellSize, cellSize);
+  });
+
   for (const enemy of enemies) {
     const cellX = Math.floor(enemy.x / cellSize);
     const cellY = Math.floor(enemy.y / cellSize);
