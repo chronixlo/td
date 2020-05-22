@@ -16,6 +16,8 @@ const cellSize = gameWidth / gridWidth;
 let mouseX;
 let mouseY;
 
+let selectedTurret;
+
 for (let y = 0; y < gridHeight; y++) {
   for (let x = 0; x < gridWidth; x++) {
 
@@ -67,6 +69,7 @@ const draw = () => {
       y: cellSize * 3 + cellSize / 2 - 5,
       speed: 100, // pixels per second
       size: 10,
+      health: 50,
     });
   }
 
@@ -100,6 +103,9 @@ const draw = () => {
   }
 
   for (const enemy of enemies) {
+    if (enemy.health <= 0) {
+      continue;
+    }
     const cellX = Math.floor(enemy.x / cellSize);
     const cellY = Math.floor(enemy.y / cellSize);
     const segmentIndex = path.findIndex(segment => segment[0] === cellX && segment[1] === cellY);
@@ -134,25 +140,29 @@ const draw = () => {
     ctx.closePath();
 
     const radiusPx = turret.radius * cellSize;
-    ctx.strokeStyle = '#00f';
-    ctx.beginPath();
-    ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.closePath();
+
+    if (selectedTurret && selectedTurret.gridX === turret.gridX && selectedTurret.gridY === turret.gridY) {
+      ctx.strokeStyle = '#00f';
+      ctx.beginPath();
+      ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.closePath();
+    }
 
     if (now - turret.lastShot > turret.shotInterval) {
       let didShoot = false;
       for (const idx in enemies) {
-        if (didShoot) {
+        const enemy = enemies[idx];
+        if (didShoot || enemy.health <= 0) {
           continue;
         }
-        const enemy = enemies[idx];
         const dist = Math.hypot(x - enemy.x, y - enemy.y);
         if (dist < radiusPx) {
           projectiles.push({
             x,
             y,
             speed: turret.projectileSpeed,
+            damage: turret.projectileDamage,
             enemyIndex: idx,
           });
           turret.lastShot = now;
@@ -176,8 +186,10 @@ const draw = () => {
     projectile.x = Math.cos(angle) * distance + projectile.x;
     projectile.y = Math.sin(angle) * distance + projectile.y;
 
+    // hit
     if (Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) < 5) {
-      projectiles.splice(i, 0);
+      projectiles.splice(i, 1);
+      enemy.health -= projectile.damage;
       continue;
     }
 
@@ -209,14 +221,29 @@ const onClick = e => {
   const gridX = Math.floor(mouseX / cellSize);
   const gridY = Math.floor(mouseY / cellSize);
 
-  turrets.push({
-    gridX,
-    gridY,
-    radius: 3, // cells
-    lastShot: 0,
-    shotInterval: 500,
-    projectileSpeed: 200, // pixels per second
-  });
+  selectedTurret = null;
+
+  if (path.find(segment => segment[0] === gridX && segment[1] === gridY)) {
+    return;
+  }
+
+  let turret = turrets.find(turret => turret.gridX === gridX && turret.gridY === gridY);
+
+  if (!turret) {
+    turret = {
+      gridX,
+      gridY,
+      radius: 3, // cells
+      lastShot: 0,
+      shotInterval: 500,
+      projectileSpeed: 200, // pixels per second
+      projectileDamage: 10,
+    };
+
+    turrets.push(turret);
+  }
+
+  selectedTurret = turret;
 };
 
 canvas.addEventListener('mousemove', onMouseMove);
