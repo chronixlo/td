@@ -6,5 +6,9 @@ export class Enemy {
     this.speed = options.speed;
     this.size = options.size;
     this.health = options.health;
+    this.lastSegment = null;
+    this.nextSegment = null;
+    this.cellOffsetX = options.cellOffsetX || 0.5;
+    this.cellOffsetY = options.cellOffsetY || 0.5;
   }
 }

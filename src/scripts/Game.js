@@ -25,7 +25,15 @@ export default class Game {
 
     this.turrets = [];
     this.projectiles = [];
-    this.enemies = [];
+    this.enemies = [
+      new Enemy({
+        x: -this.cellSize / 2,
+        y: this.cellSize * 3 + this.cellSize / 2 - 5,
+        speed: 100, // pixels per second
+        size: 10,
+        health: 50,
+      }),
+    ];
 
     this.path = [
       [-1, 3],
@@ -58,25 +66,34 @@ export default class Game {
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     canvas.addEventListener('click', this.onClick.bind(this));
 
-    requestAnimationFrame(this.draw.bind(this));
+    this.draw = this.draw.bind(this);
+
+    requestAnimationFrame(this.draw);
   }
 
   draw() {
-    const { ctx, gameWidth, gameHeight, cellSize, gridHeight, gridWidth } = this;
+    const {
+      ctx,
+      gameWidth,
+      gameHeight,
+      cellSize,
+      gridHeight,
+      gridWidth,
+    } = this;
 
     const now = Date.now();
     const delta = now - this.lastRender;
     const deltaSeconds = delta / 1000;
 
-    if (Math.random() > 0.98) {
-      this.enemies.push(new Enemy({
-        x: -cellSize / 2,
-        y: cellSize * 3 + cellSize / 2 - 5,
-        speed: 100, // pixels per second
-        size: 10,
-        health: 50,
-      }));
-    }
+    // if (Math.random() > 0.98) {
+    //   this.enemies.push(new Enemy({
+    //     x: -cellSize / 2,
+    //     y: cellSize * 3 + cellSize / 2 - 5,
+    //     speed: 100, // pixels per second
+    //     size: 10,
+    //     health: 50,
+    //   }));
+    // }
 
     // background
     ctx.fillStyle = '#222';
@@ -84,8 +101,13 @@ export default class Game {
 
     // path
     ctx.fillStyle = '#888';
-    this.path.forEach(segment => {
-      ctx.fillRect(segment[0] * cellSize, segment[1] * cellSize, cellSize, cellSize);
+    this.path.forEach((segment) => {
+      ctx.fillRect(
+        segment[0] * cellSize,
+        segment[1] * cellSize,
+        cellSize,
+        cellSize
+      );
     });
 
     // grid
@@ -108,28 +130,53 @@ export default class Game {
     }
 
     // process enemies
-    for (const enemy of this.enemies) {
+    for (let i = this.enemies.length - 1; i > -1; i--) {
+      const enemy = this.enemies[i];
       if (enemy.health <= 0) {
+        this.enemies.splice(i, 1);
         continue;
       }
-      const cellX = Math.floor(enemy.x / cellSize);
-      const cellY = Math.floor(enemy.y / cellSize);
-      const segmentIndex = this.path.findIndex(segment => segment[0] === cellX && segment[1] === cellY);
-      const nextSegment = this.path[segmentIndex + 1];
-      if (!nextSegment) {
+      if (!enemy.nextSegment) {
+        const cellX = Math.floor(enemy.x / cellSize);
+        const cellY = Math.floor(enemy.y / cellSize);
+        const segmentIndex = this.path.findIndex(
+          (segment) => segment[0] === cellX && segment[1] === cellY
+        );
+        const nextSegment = this.path[segmentIndex + 1];
+
+        enemy.lastSegment = this.path[segmentIndex];
+        enemy.nextSegment = nextSegment;
+      }
+
+      if (!enemy.nextSegment) {
+        this.enemies.splice(i, 1);
         continue;
       }
-      if (nextSegment[0] > cellX) {
-        enemy.x += enemy.speed * deltaSeconds;
-      }
-      else if (nextSegment[0] < cellX) {
-        enemy.x -= enemy.speed * deltaSeconds;
-      }
-      else if (nextSegment[1] > cellY) {
-        enemy.y += enemy.speed * deltaSeconds;
-      }
-      else if (nextSegment[1] < cellY) {
-        enemy.y -= enemy.speed * deltaSeconds;
+
+      if (enemy.lastSegment[0] !== enemy.nextSegment[0]) {
+        if (this.getEnemyOffsetX(enemy) > enemy.x) {
+          enemy.x += enemy.speed * deltaSeconds;
+          if (this.getEnemyOffsetX(enemy) <= enemy.x) {
+            enemy.nextSegment = null;
+          }
+        } else if (this.getEnemyOffsetX(enemy) < enemy.x) {
+          enemy.x -= enemy.speed * deltaSeconds;
+          if (this.getEnemyOffsetX(enemy) >= enemy.x) {
+            enemy.nextSegment = null;
+          }
+        }
+      } else if (enemy.lastSegment[1] !== enemy.nextSegment[1]) {
+        if (this.getEnemyOffsetY(enemy) > enemy.y) {
+          enemy.y += enemy.speed * deltaSeconds;
+          if (this.getEnemyOffsetY(enemy) <= enemy.y) {
+            enemy.nextSegment = null;
+          }
+        } else if (this.getEnemyOffsetY(enemy) < enemy.y) {
+          enemy.y -= enemy.speed * deltaSeconds;
+          if (this.getEnemyOffsetY(enemy) >= enemy.y) {
+            enemy.nextSegment = null;
+          }
+        }
       }
 
       ctx.fillStyle = '#0f0';
@@ -148,7 +195,11 @@ export default class Game {
 
       const radiusPx = turret.radius * cellSize;
 
-      if (this.selectedTurret && this.selectedTurret.gridX === turret.gridX && this.selectedTurret.gridY === turret.gridY) {
+      if (
+        this.selectedTurret &&
+        this.selectedTurret.gridX === turret.gridX &&
+        this.selectedTurret.gridY === turret.gridY
+      ) {
         ctx.strokeStyle = '#00f';
         ctx.beginPath();
         ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
@@ -165,13 +216,15 @@ export default class Game {
           }
           const dist = Math.hypot(x - enemy.x, y - enemy.y);
           if (dist < radiusPx) {
-            this.projectiles.push(new Projectile({
-              x,
-              y,
-              speed: turret.projectileSpeed,
-              damage: turret.projectileDamage,
-              enemyIndex: idx,
-            }));
+            this.projectiles.push(
+              new Projectile({
+                x,
+                y,
+                speed: turret.projectileSpeed,
+                damage: turret.projectileDamage,
+                enemyIndex: idx,
+              })
+            );
             turret.lastShot = now;
             didShoot = true;
           }
@@ -183,6 +236,11 @@ export default class Game {
     for (let i = this.projectiles.length - 1; i > -1; i--) {
       const projectile = this.projectiles[i];
       const enemy = this.enemies[projectile.enemyIndex];
+
+      if (!enemy) {
+        this.projectiles.splice(i, 1);
+        continue;
+      }
 
       const deltaX = enemy.x - projectile.x;
       const deltaY = enemy.y - projectile.y;
@@ -217,7 +275,7 @@ export default class Game {
 
     this.lastRender = now;
 
-    requestAnimationFrame(this.draw.bind(this));
+    requestAnimationFrame(this.draw);
   }
 
   onMouseMove(e) {
@@ -231,11 +289,15 @@ export default class Game {
 
     this.selectedTurret = null;
 
-    if (this.path.find(segment => segment[0] === gridX && segment[1] === gridY)) {
+    if (
+      this.path.find((segment) => segment[0] === gridX && segment[1] === gridY)
+    ) {
       return;
     }
 
-    let turret = this.turrets.find(turret => turret.gridX === gridX && turret.gridY === gridY);
+    let turret = this.turrets.find(
+      (turret) => turret.gridX === gridX && turret.gridY === gridY
+    );
 
     if (!turret) {
       turret = new Turret({
@@ -254,4 +316,19 @@ export default class Game {
     this.selectedTurret = turret;
   }
 
+  getEnemyOffsetX(enemy) {
+    return (
+      enemy.nextSegment[0] * this.cellSize +
+      enemy.cellOffsetX * this.cellSize -
+      0.5 * enemy.size
+    );
+  }
+
+  getEnemyOffsetY(enemy) {
+    return (
+      enemy.nextSegment[1] * this.cellSize +
+      enemy.cellOffsetY * this.cellSize -
+      0.5 * enemy.size
+    );
+  }
 }
