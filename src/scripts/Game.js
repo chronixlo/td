@@ -1,12 +1,11 @@
-import '../styles/index.scss';
 import { Turret } from './objects/Turret';
 import { Enemy } from './objects/Enemy';
 import { Projectile } from './objects/Projectile';
 
-export default class Game {
+class Game {
   constructor() {
-    this.canvas = document.getElementById('canvas');
-    this.ctx = canvas.getContext('2d');
+    const canvas = (this.canvas = document.getElementById('game'));
+    this.ctx = this.canvas.getContext('2d');
 
     this.gameWidth = 800;
     this.gameHeight = 450;
@@ -22,18 +21,17 @@ export default class Game {
     this.mouseY;
 
     this.selectedTurret;
+    this.placingTurret;
+
+    this.wave = {
+      total: 10,
+      killed: 0,
+      missed: 0,
+    };
 
     this.turrets = [];
     this.projectiles = [];
-    this.enemies = [
-      new Enemy({
-        x: -this.cellSize / 2,
-        y: this.cellSize * 3 + this.cellSize / 2 - 5,
-        speed: 100, // pixels per second
-        size: 10,
-        health: 50,
-      }),
-    ];
+    this.enemies = [];
 
     this.path = [
       [-1, 3],
@@ -64,6 +62,10 @@ export default class Game {
     this.lastRender = Date.now();
 
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+    canvas.addEventListener('mouseleave', () => {
+      this.mouseX = null;
+      this.mouseY = null;
+    });
     canvas.addEventListener('click', this.onClick.bind(this));
 
     this.draw = this.draw.bind(this);
@@ -84,16 +86,6 @@ export default class Game {
     const now = Date.now();
     const delta = now - this.lastRender;
     const deltaSeconds = delta / 1000;
-
-    // if (Math.random() > 0.98) {
-    //   this.enemies.push(new Enemy({
-    //     x: -cellSize / 2,
-    //     y: cellSize * 3 + cellSize / 2 - 5,
-    //     speed: 100, // pixels per second
-    //     size: 10,
-    //     health: 50,
-    //   }));
-    // }
 
     // background
     ctx.fillStyle = '#222';
@@ -129,11 +121,27 @@ export default class Game {
       ctx.closePath();
     }
 
+    // wave status
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Total: ${this.wave.total}`, gameWidth - 10, 10);
+    ctx.fillText(
+      `Coming: ${this.wave.total - this.enemies.length - this.wave.missed}`,
+      gameWidth - 10,
+      30
+    );
+    ctx.fillText(`Killed: ${this.wave.killed}`, gameWidth - 10, 50);
+    ctx.fillText(`Missed: ${this.wave.missed}`, gameWidth - 10, 70);
+
     // process enemies
     for (let i = this.enemies.length - 1; i > -1; i--) {
       const enemy = this.enemies[i];
       if (enemy.health <= 0) {
-        this.enemies.splice(i, 1);
+        // can't slice as turret's target is enemy index
+        // this.enemies.splice(i, 1);
+        // this.wave.killed++;
         continue;
       }
       if (!enemy.nextSegment) {
@@ -150,6 +158,7 @@ export default class Game {
 
       if (!enemy.nextSegment) {
         this.enemies.splice(i, 1);
+        this.wave.missed++;
         continue;
       }
 
@@ -187,7 +196,7 @@ export default class Game {
     for (const turret of this.turrets) {
       const x = turret.gridX * cellSize + cellSize / 2;
       const y = turret.gridY * cellSize + cellSize / 2;
-      ctx.fillStyle = '#00f';
+      ctx.fillStyle = turret.color;
       ctx.beginPath();
       ctx.arc(x, y, 10, 0, Math.PI * 2);
       ctx.fill();
@@ -200,7 +209,7 @@ export default class Game {
         this.selectedTurret.gridX === turret.gridX &&
         this.selectedTurret.gridY === turret.gridY
       ) {
-        ctx.strokeStyle = '#00f';
+        ctx.strokeStyle = turret.color;
         ctx.beginPath();
         ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
         ctx.stroke();
@@ -222,6 +231,7 @@ export default class Game {
                 y,
                 speed: turret.projectileSpeed,
                 damage: turret.projectileDamage,
+                size: turret.projectileSize,
                 enemyIndex: idx,
               })
             );
@@ -237,7 +247,7 @@ export default class Game {
       const projectile = this.projectiles[i];
       const enemy = this.enemies[projectile.enemyIndex];
 
-      if (!enemy) {
+      if (!enemy || enemy.health < 0) {
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -253,25 +263,51 @@ export default class Game {
       projectile.y = Math.sin(angle) * distance + projectile.y;
 
       // hit
-      if (Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) < 5) {
+      if (
+        Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) <
+        projectile.size
+      ) {
         this.projectiles.splice(i, 1);
         enemy.health -= projectile.damage;
+        if (enemy.health < 0) {
+          this.wave.killed++;
+        }
         continue;
       }
 
       ctx.fillStyle = '#f00';
       ctx.beginPath();
-      ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI * 2);
+      ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.closePath();
     }
 
-    // cell selection
-    let xCell = Math.floor(this.mouseX / cellSize);
-    let yCell = Math.floor(this.mouseY / cellSize);
+    if (this.mouseX) {
+      // cell selection
+      let xCell = Math.floor(this.mouseX / cellSize);
+      let yCell = Math.floor(this.mouseY / cellSize);
 
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-    ctx.fillRect(xCell * cellSize, yCell * cellSize, cellSize, cellSize);
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+      ctx.fillRect(xCell * cellSize, yCell * cellSize, cellSize, cellSize);
+
+      if (this.placingTurret) {
+        const x = xCell * cellSize + cellSize / 2;
+        const y = yCell * cellSize + cellSize / 2;
+
+        ctx.fillStyle = this.placingTurret.color;
+        ctx.beginPath();
+        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.closePath();
+
+        const radiusPx = this.placingTurret.radius * cellSize;
+        ctx.strokeStyle = this.placingTurret.color;
+        ctx.beginPath();
+        ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.closePath();
+      }
+    }
 
     this.lastRender = now;
 
@@ -279,8 +315,8 @@ export default class Game {
   }
 
   onMouseMove(e) {
-    this.mouseX = e.offsetX;
-    this.mouseY = e.offsetY;
+    this.mouseX = e.layerX;
+    this.mouseY = e.layerY;
   }
 
   onClick(e) {
@@ -299,16 +335,11 @@ export default class Game {
       (turret) => turret.gridX === gridX && turret.gridY === gridY
     );
 
-    if (!turret) {
-      turret = new Turret({
-        gridX,
-        gridY,
-        radius: 3,
-        lastShot: 0,
-        shotInterval: 500,
-        projectileSpeed: 200,
-        projectileDamage: 10,
-      });
+    if (!turret && this.placingTurret) {
+      this.placingTurret.gridX = gridX;
+      this.placingTurret.gridY = gridY;
+      turret = new Turret(this.placingTurret);
+      this.placingTurret = null;
 
       this.turrets.push(turret);
     }
@@ -331,4 +362,26 @@ export default class Game {
       0.5 * enemy.size
     );
   }
+
+  sendWave() {
+    for (let i = 0; i < this.wave.total; i++) {
+      setTimeout(() => {
+        this.enemies.push(
+          new Enemy({
+            x: -this.cellSize / 2,
+            y: this.cellSize * 3 + this.cellSize / 2 - 5,
+            speed: 500,
+            size: 10,
+            health: 50,
+          })
+        );
+      }, i * 1000);
+    }
+  }
+
+  placeTurret(turret) {
+    this.placingTurret = turret;
+  }
 }
+
+export default new Game();

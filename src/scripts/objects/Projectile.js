@@ -5,5 +5,6 @@ export class Projectile {
     this.speed = options.speed;
     this.damage = options.damage;
     this.enemyIndex = options.enemyIndex;
+    this.size = options.size;
   }
 }

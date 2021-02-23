@@ -10,5 +10,7 @@ export class Turret {
     // pixels per second
     this.projectileSpeed = options.projectileSpeed;
     this.projectileDamage = options.projectileDamage;
+    this.projectileSize = options.projectileSize;
+    this.color = options.color || '#fff';
   }
 }

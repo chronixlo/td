@@ -1,3 +1,6 @@
+import '../styles/index.scss';
 import Game from './Game';
+import Toolbar from './Toolbar';
 
-const game = new Game();
+const game = Game;
+const toolbar = Toolbar;
