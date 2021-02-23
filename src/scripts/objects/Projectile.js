@@ -6,5 +6,6 @@ export class Projectile {
     this.damage = options.damage;
     this.enemyIndex = options.enemyIndex;
     this.size = options.size;
+    this.color = options.color;
   }
 }

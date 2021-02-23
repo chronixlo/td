@@ -10,5 +10,6 @@ export class Enemy {
     this.nextSegment = null;
     this.cellOffsetX = options.cellOffsetX || 0.5;
     this.cellOffsetY = options.cellOffsetY || 0.5;
+    this.money = options.money;
   }
 }

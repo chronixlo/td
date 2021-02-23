@@ -23,11 +23,31 @@ class Game {
     this.selectedTurret;
     this.placingTurret;
 
+    this.money = 100;
+
     this.wave = {
+      number: 1,
       total: 10,
       killed: 0,
       missed: 0,
+      inProgress: false,
+      finishedAt: null,
     };
+
+    this.turretTypes = [
+      {
+        typeId: 1,
+        radius: 3,
+        shotInterval: 500,
+        projectileSpeed: 200,
+        projectileDamage: 10,
+        projectileSize: 5,
+        projectileColor: '#d24',
+        color: '#68e',
+        size: 10,
+        price: 50,
+      },
+    ];
 
     this.turrets = [];
     this.projectiles = [];
@@ -62,10 +82,7 @@ class Game {
     this.lastRender = Date.now();
 
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
-    canvas.addEventListener('mouseleave', () => {
-      this.mouseX = null;
-      this.mouseY = null;
-    });
+    canvas.addEventListener('mouseleave', this.onMouseLeave.bind(this));
     canvas.addEventListener('click', this.onClick.bind(this));
 
     this.draw = this.draw.bind(this);
@@ -126,9 +143,13 @@ class Game {
     ctx.font = '20px monospace';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'top';
-    ctx.fillText(`Total: ${this.wave.total}`, gameWidth - 10, 10);
     ctx.fillText(
-      `Coming: ${this.wave.total - this.enemies.length - this.wave.missed}`,
+      `Remaining: ${this.wave.total - this.wave.missed - this.wave.killed}`,
+      gameWidth - 10,
+      10
+    );
+    ctx.fillText(
+      `Coming: ${this.wave.total - this.enemies.length}`,
       gameWidth - 10,
       30
     );
@@ -157,8 +178,9 @@ class Game {
       }
 
       if (!enemy.nextSegment) {
-        this.enemies.splice(i, 1);
+        // this.enemies.splice(i, 1);
         this.wave.missed++;
+        enemy.health = 0;
         continue;
       }
 
@@ -233,6 +255,7 @@ class Game {
                 damage: turret.projectileDamage,
                 size: turret.projectileSize,
                 enemyIndex: idx,
+                color: turret.projectileColor,
               })
             );
             turret.lastShot = now;
@@ -247,7 +270,7 @@ class Game {
       const projectile = this.projectiles[i];
       const enemy = this.enemies[projectile.enemyIndex];
 
-      if (!enemy || enemy.health < 0) {
+      if (!enemy || enemy.health <= 0) {
         this.projectiles.splice(i, 1);
         continue;
       }
@@ -269,13 +292,14 @@ class Game {
       ) {
         this.projectiles.splice(i, 1);
         enemy.health -= projectile.damage;
-        if (enemy.health < 0) {
+        if (enemy.health <= 0) {
           this.wave.killed++;
+          this.money += enemy.money;
         }
         continue;
       }
 
-      ctx.fillStyle = '#f00';
+      ctx.fillStyle = projectile.color;
       ctx.beginPath();
       ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
       ctx.fill();
@@ -287,7 +311,7 @@ class Game {
       let xCell = Math.floor(this.mouseX / cellSize);
       let yCell = Math.floor(this.mouseY / cellSize);
 
-      ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.fillRect(xCell * cellSize, yCell * cellSize, cellSize, cellSize);
 
       if (this.placingTurret) {
@@ -296,7 +320,7 @@ class Game {
 
         ctx.fillStyle = this.placingTurret.color;
         ctx.beginPath();
-        ctx.arc(x, y, 10, 0, Math.PI * 2);
+        ctx.arc(x, y, this.placingTurret.size, 0, Math.PI * 2);
         ctx.fill();
         ctx.closePath();
 
@@ -309,6 +333,17 @@ class Game {
       }
     }
 
+    if (
+      !this.wave.finishedAt &&
+      this.wave.total - this.wave.missed - this.wave.killed < 1
+    ) {
+      this.wave.finishedAt = now;
+    }
+
+    if (this.wave.finishedAt && this.wave.finishedAt + 3000 < now) {
+      this.advance();
+    }
+
     this.lastRender = now;
 
     requestAnimationFrame(this.draw);
@@ -319,7 +354,12 @@ class Game {
     this.mouseY = e.layerY;
   }
 
-  onClick(e) {
+  onMouseLeave() {
+    this.mouseX = null;
+    this.mouseY = null;
+  }
+
+  onClick() {
     const gridX = Math.floor(this.mouseX / this.cellSize);
     const gridY = Math.floor(this.mouseY / this.cellSize);
 
@@ -335,13 +375,19 @@ class Game {
       (turret) => turret.gridX === gridX && turret.gridY === gridY
     );
 
-    if (!turret && this.placingTurret) {
-      this.placingTurret.gridX = gridX;
-      this.placingTurret.gridY = gridY;
-      turret = new Turret(this.placingTurret);
-      this.placingTurret = null;
+    if (this.placingTurret) {
+      if (!turret && this.money >= this.placingTurret.price) {
+        this.placingTurret.gridX = gridX;
+        this.placingTurret.gridY = gridY;
+        turret = new Turret(this.placingTurret);
+        this.money -= this.placingTurret.price;
+        this.placingTurret = null;
 
-      this.turrets.push(turret);
+        this.turrets.push(turret);
+      } else {
+        this.placingTurret = null;
+        return;
+      }
     }
 
     this.selectedTurret = turret;
@@ -364,6 +410,11 @@ class Game {
   }
 
   sendWave() {
+    if (this.wave.inProgress) {
+      return;
+    }
+    this.wave.inProgress = true;
+
     for (let i = 0; i < this.wave.total; i++) {
       setTimeout(() => {
         this.enemies.push(
@@ -373,14 +424,29 @@ class Game {
             speed: 500,
             size: 10,
             health: 50,
+            money: 5,
           })
         );
-      }, i * 1000);
+      }, i * 100);
     }
   }
 
   placeTurret(turret) {
     this.placingTurret = turret;
+    this.selectedTurret = null;
+  }
+
+  advance() {
+    this.enemies = [];
+    this.projectiles = [];
+    this.wave = {
+      number: this.wave.number + 1,
+      total: Math.round(10 + this.wave.number * 1.4),
+      killed: 0,
+      missed: 0,
+      inProgress: false,
+      finishedAt: null,
+    };
   }
 }
 

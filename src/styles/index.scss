@@ -8,19 +8,135 @@ html, body {
 }
 
 body {
+  font-size: 16px;
+  font-family: monospace;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #ccc;
+}
+
+#container {
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  max-width: 800px;
+  overflow: hidden;
+
+  @media (min-width: 800px) and (min-height: 800px) {
+    box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
+    border-radius: 20px;
+  }
+}
+
+canvas {
+  display: block;
+}
+
+#title-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding: 1rem;
+  > * {
+    flex: 1;
+  }
+}
+
+#turret-row {
+  flex: 1;
+  display: flex;
+  justify-content: space-around;
+  > * {
+    flex: 1;
+    overflow: hidden auto;
+  }
+}
+
+.display {
+  font-size: 2rem;
+}
+
+#wave-number {
+  text-align: center;
 }
 
 #toolbar {
-  width: 800px;
+  width: 100%;
   background: #333;
-  height: 100px;
+  height: 300px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  color: #fff;
+  overflow: hidden;
 }
 
 #turrets {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  overflow: hidden auto;
+  flex-wrap: wrap;
+  margin: 1rem;
+}
+
+#turret-info {
+  white-space: pre-wrap;
+  overflow-y: auto;
+}
+
+.button {
+  border-radius: 4px;
+  background: #555;
+  font-size: 1.5rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem 2rem;
+  cursor: pointer;
+  user-select: none;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+
+  &:hover {
+    background: #666;
+  }
+}
+
+.turret-button {
+  padding: 0;
+  position: relative;
+
+  &.selected {
+    border: 1px solid #fff;
+  }
+
+
+  &.disabled {
+    .price-label {
+      color: #f00;
+    }
+  }
+
+  .price-label {
+    position: absolute;
+    bottom: 0;
+    font-size: 0.75rem;
+  }
+}
+
+#ready-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+#ready-button {
+  border-radius: 0;
+  display: inline;
 }
