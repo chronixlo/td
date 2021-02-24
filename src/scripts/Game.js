@@ -1,6 +1,10 @@
 import { Turret } from './objects/Turret';
 import { Enemy } from './objects/Enemy';
 import { Projectile } from './objects/Projectile';
+import generatePath from './functions/generatePath';
+import generateTurrets from './functions/generateTurrets';
+import generateEnemies from './functions/generateEnemies';
+import { rand } from './functions/helpers';
 
 class Game {
   constructor() {
@@ -26,58 +30,19 @@ class Game {
     this.money = 100;
 
     this.wave = {
-      number: 1,
-      total: 10,
-      killed: 0,
-      missed: 0,
-      inProgress: false,
-      finishedAt: null,
+      number: 0,
     };
 
-    this.turretTypes = [
-      {
-        typeId: 1,
-        radius: 3,
-        shotInterval: 500,
-        projectileSpeed: 200,
-        projectileDamage: 10,
-        projectileSize: 5,
-        projectileColor: '#d24',
-        color: '#68e',
-        size: 10,
-        price: 50,
-      },
-    ];
+    this.turretTypes = generateTurrets();
+    this.enemyTypes = generateEnemies();
 
     this.turrets = [];
     this.projectiles = [];
     this.enemies = [];
 
-    this.path = [
-      [-1, 3],
-      [0, 3],
-      [1, 3],
-      [1, 4],
-      [2, 4],
-      [2, 5],
-      [2, 6],
-      [2, 7],
-      [2, 8],
-      [3, 8],
-      [4, 8],
-      [5, 8],
-      [6, 8],
-      [6, 7],
-      [6, 6],
-      [5, 6],
-      [5, 5],
-      [5, 4],
-      [5, 3],
-      [5, 2],
-      [5, 1],
-      [5, 0],
-      [5, -1],
-    ];
+    this.path = generatePath(this.gridWidth, this.gridHeight);
+
+    this.advance();
 
     this.lastRender = Date.now();
 
@@ -99,6 +64,10 @@ class Game {
       gridHeight,
       gridWidth,
     } = this;
+
+    if (!this.wave.inProgress) {
+      this.sendWave();
+    }
 
     const now = Date.now();
     const delta = now - this.lastRender;
@@ -139,22 +108,22 @@ class Game {
     }
 
     // wave status
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px monospace';
-    ctx.textAlign = 'right';
-    ctx.textBaseline = 'top';
-    ctx.fillText(
-      `Remaining: ${this.wave.total - this.wave.missed - this.wave.killed}`,
-      gameWidth - 10,
-      10
-    );
-    ctx.fillText(
-      `Coming: ${this.wave.total - this.enemies.length}`,
-      gameWidth - 10,
-      30
-    );
-    ctx.fillText(`Killed: ${this.wave.killed}`, gameWidth - 10, 50);
-    ctx.fillText(`Missed: ${this.wave.missed}`, gameWidth - 10, 70);
+    // ctx.fillStyle = '#fff';
+    // ctx.font = '20px monospace';
+    // ctx.textAlign = 'right';
+    // ctx.textBaseline = 'top';
+    // ctx.fillText(
+    //   `Remaining: ${this.wave.total - this.wave.missed - this.wave.killed}`,
+    //   gameWidth - 10,
+    //   10
+    // );
+    // ctx.fillText(
+    //   `Coming: ${this.wave.total - this.enemies.length}`,
+    //   gameWidth - 10,
+    //   30
+    // );
+    // ctx.fillText(`Killed: ${this.wave.killed}`, gameWidth - 10, 50);
+    // ctx.fillText(`Missed: ${this.wave.missed}`, gameWidth - 10, 70);
 
     // process enemies
     for (let i = this.enemies.length - 1; i > -1; i--) {
@@ -169,10 +138,15 @@ class Game {
         const cellX = Math.floor(enemy.x / cellSize);
         const cellY = Math.floor(enemy.y / cellSize);
         const segmentIndex = this.path.findIndex(
-          (segment) => segment[0] === cellX && segment[1] === cellY
+          (segment, idx) =>
+            (enemy.lastSegmentIndex == null || idx > enemy.lastSegmentIndex) &&
+            segment[0] === cellX &&
+            segment[1] === cellY
         );
+
         const nextSegment = this.path[segmentIndex + 1];
 
+        enemy.lastSegmentIndex = segmentIndex;
         enemy.lastSegment = this.path[segmentIndex];
         enemy.nextSegment = nextSegment;
       }
@@ -210,8 +184,7 @@ class Game {
         }
       }
 
-      ctx.fillStyle = '#0f0';
-      ctx.fillRect(enemy.x, enemy.y, enemy.size, enemy.size);
+      enemy.render(ctx);
     }
 
     // process turrets
@@ -220,21 +193,19 @@ class Game {
       const y = turret.gridY * cellSize + cellSize / 2;
       ctx.fillStyle = turret.color;
       ctx.beginPath();
-      ctx.arc(x, y, 10, 0, Math.PI * 2);
+      ctx.arc(x, y, turret.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.closePath();
 
       const radiusPx = turret.radius * cellSize;
 
-      if (
-        this.selectedTurret &&
-        this.selectedTurret.gridX === turret.gridX &&
-        this.selectedTurret.gridY === turret.gridY
-      ) {
+      if (this.selectedTurret && this.selectedTurret.id === turret.id) {
         ctx.strokeStyle = turret.color;
+        ctx.fillStyle = turret.color + '3';
         ctx.beginPath();
         ctx.arc(x, y, radiusPx, 0, Math.PI * 2);
         ctx.stroke();
+        // ctx.fill();
         ctx.closePath();
       }
 
@@ -299,11 +270,7 @@ class Game {
         continue;
       }
 
-      ctx.fillStyle = projectile.color;
-      ctx.beginPath();
-      ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.closePath();
+      projectile.render(ctx);
     }
 
     if (this.mouseX) {
@@ -359,7 +326,9 @@ class Game {
     this.mouseY = null;
   }
 
-  onClick() {
+  onClick(e) {
+    e.stopPropagation();
+
     const gridX = Math.floor(this.mouseX / this.cellSize);
     const gridY = Math.floor(this.mouseY / this.cellSize);
 
@@ -415,19 +384,27 @@ class Game {
     }
     this.wave.inProgress = true;
 
-    for (let i = 0; i < this.wave.total; i++) {
+    for (let idx in this.wave.enemyTypes) {
+      const size = this.wave.enemyTypes[idx].size;
       setTimeout(() => {
         this.enemies.push(
-          new Enemy({
-            x: -this.cellSize / 2,
-            y: this.cellSize * 3 + this.cellSize / 2 - 5,
-            speed: 500,
-            size: 10,
-            health: 50,
-            money: 5,
-          })
+          new Enemy(
+            Object.assign(
+              {
+                x:
+                  this.path[0][0] * this.cellSize +
+                  this.cellSize / 2 -
+                  size / 2,
+                y:
+                  this.path[0][1] * this.cellSize +
+                  this.cellSize / 2 -
+                  size / 2,
+              },
+              this.wave.enemyTypes[idx]
+            )
+          )
         );
-      }, i * 100);
+      }, idx * 300);
     }
   }
 
@@ -439,14 +416,48 @@ class Game {
   advance() {
     this.enemies = [];
     this.projectiles = [];
+
+    const number = this.wave.number + 1;
+
+    const enemyBudget = (10 + number) * 14;
+    let budgetLeft = enemyBudget;
+    const enemyTypes = [];
+
+    while (budgetLeft > 0) {
+      const possibleEnemyTypes = this.enemyTypes.filter(
+        (enemyType) => enemyType.level <= budgetLeft
+      );
+
+      if (!possibleEnemyTypes.length) {
+        break;
+      }
+      const enemyType =
+        possibleEnemyTypes[rand(0, possibleEnemyTypes.length - 1)];
+      enemyTypes.push(enemyType);
+      budgetLeft -= enemyType.level;
+    }
+
     this.wave = {
-      number: this.wave.number + 1,
-      total: Math.round(10 + this.wave.number * 1.4),
+      number,
+      total: enemyTypes.length,
       killed: 0,
       missed: 0,
       inProgress: false,
       finishedAt: null,
+      enemyTypes,
     };
+  }
+
+  sellSelectedTurret() {
+    const idx = this.turrets.findIndex(
+      (turret) => turret.id === this.selectedTurret.id
+    );
+    if (idx === -1) {
+      return;
+    }
+    this.turrets.splice(idx, 1);
+    this.money += this.selectedTurret.sellPrice;
+    this.selectedTurret = null;
   }
 }
 

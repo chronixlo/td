@@ -39,7 +39,8 @@ canvas {
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 1rem;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #666;
   > * {
     flex: 1;
   }
@@ -49,9 +50,9 @@ canvas {
   flex: 1;
   display: flex;
   justify-content: space-around;
+  overflow: hidden;
   > * {
     flex: 1;
-    overflow: hidden auto;
   }
 }
 
@@ -66,7 +67,7 @@ canvas {
 #toolbar {
   width: 100%;
   background: #333;
-  height: 300px;
+  height: 350px;
   display: flex;
   flex-direction: column;
   color: #fff;
@@ -75,16 +76,33 @@ canvas {
 
 #turrets {
   display: flex;
-  align-items: flex-start;
   flex: 1;
   overflow: hidden auto;
   flex-wrap: wrap;
-  margin: 1rem;
+  padding: 0.5rem;
+}
+
+#turret-panel {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+#turret-actions {
+  padding-top: 0.5rem;
+}
+
+#sell-turret {
+  display: none;
+  &.visible {
+    display: inline-block;
+  }
 }
 
 #turret-info {
+  flex: 1;
   white-space: pre-wrap;
-  overflow-y: auto;
+  overflow: hidden auto;
 }
 
 .button {
@@ -100,34 +118,39 @@ canvas {
   cursor: pointer;
   user-select: none;
 
+  &.small {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+  }
+
   &.disabled {
     opacity: 0.5;
   }
 
   &:hover {
-    background: #666;
+    background: #777;
   }
 }
 
 .turret-button {
-  padding: 0;
-  position: relative;
+  padding: 0 1rem;
+  margin: 0.5rem;
+  border: 1px solid transparent;
+  width: calc(100% / 3 - 1rem);
 
   &.selected {
-    border: 1px solid #fff;
+    background-color: #666;
+    border-color: #aaa;
   }
-
 
   &.disabled {
     .price-label {
-      color: #f00;
+      color: #ddd;
     }
   }
 
   .price-label {
-    position: absolute;
-    bottom: 0;
-    font-size: 0.75rem;
+    font-size: 1rem;
   }
 }
 

@@ -8,9 +8,10 @@ class Toolbar {
     this.waveNumber = document.getElementById('wave-number');
     this.money = document.getElementById('money');
     this.turretInfo = document.getElementById('turret-info');
+    this.sellTurret = document.getElementById('sell-turret');
 
     this.turretButtons = [];
-    this.turretButtonSize = 50;
+    this.turretButtonSize = 70;
 
     this.lastValues = {};
 
@@ -22,16 +23,12 @@ class Toolbar {
   }
 
   init() {
-    this.turrets.innerHTML = '';
     Game.turretTypes.forEach((turret) => {
       const turretButton = document.createElement('div');
       turretButton.classList.add('button', 'turret-button');
 
-      turretButton.addEventListener('click', () => {
-        if (Game.placingTurret && Game.placingTurret.typeId === turret.typeId) {
-          Game.placeTurret(null);
-          return;
-        }
+      turretButton.addEventListener('click', (e) => {
+        e.stopPropagation();
         Game.placeTurret(turret);
       });
       turretButton.addEventListener('mouseenter', () => {
@@ -82,8 +79,19 @@ class Toolbar {
       });
     });
 
-    this.readyButton.addEventListener('click', () => {
+    this.readyButton.addEventListener('click', (e) => {
+      e.stopPropagation();
       Game.sendWave();
+      Game.placeTurret(null);
+    });
+
+    this.sellTurret.addEventListener('click', (e) => {
+      e.stopPropagation();
+      Game.sellSelectedTurret();
+    });
+
+    document.addEventListener('click', () => {
+      Game.placeTurret(null);
     });
   }
 
@@ -124,9 +132,14 @@ class Toolbar {
             .slice(1, -1)
             .split(',')
             .join('\n');
+          if (Game.selectedTurret) {
+            this.sellTurret.textContent = `Sell $ ${Game.selectedTurret.sellPrice}`;
+            this.sellTurret.classList.add('visible');
+          }
           return;
         }
 
+        this.sellTurret.classList.remove('visible');
         this.turretInfo.textContent = '';
       }
     );
@@ -154,7 +167,7 @@ class Toolbar {
         !this.lastValues[callOrder] ||
         this.lastValues[callOrder][idx] !== conditions[idx]
       ) {
-        console.log('update!', callOrder);
+        // console.log('update!', callOrder);
         callback();
         break;
       }

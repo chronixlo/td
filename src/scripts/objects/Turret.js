@@ -18,5 +18,6 @@ export class Turret {
     this.projectileColor = options.projectileColor || '#f00';
     this.color = options.color || '#fff';
     this.size = options.size || 10;
+    this.sellPrice = Math.floor(options.price / 10);
   }
 }
