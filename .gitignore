@@ -1,11 +1,10 @@
 # dependencies
 node_modules
 
-# production
-build
-
 # misc
 .DS_Store
+
+**.map
 
 npm-debug.log
 yarn-error.log
