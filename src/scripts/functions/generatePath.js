@@ -1,52 +1,83 @@
-import { rand } from './helpers';
+import { rand, flip } from './helpers';
 
-export default function generatePath(cellsX, cellsY) {
+export default function generatePath(cellsX, cellsY, length = 50) {
   const randX = () => rand(1, cellsX - 2);
   const randY = () => rand(1, cellsY - 2);
 
-  const path = [];
+  let bigCounter = 0;
+  let path = [];
+  let longest = [];
 
-  // start point
-  if (Math.random() >= 0.5) {
-    const y = randY();
-    path.push([-1, y]);
-    path.push([0, y]);
-    path.push([1, y]);
-  } else {
-    const x = randX();
-    path.push([x, -1]);
-    path.push([x, 0]);
-    path.push([x, 1]);
+  while (bigCounter < 50) {
+    bigCounter++;
+
+    if (path.length === length) {
+      break;
+    }
+
+    let startPoint;
+
+    if (flip()) {
+      const y = randY();
+      startPoint = [1, y];
+    } else {
+      const x = randX();
+      startPoint = [x, 1];
+    }
+
+    if (path.length > longest.length) {
+      longest = path;
+    }
+
+    path = [startPoint];
+    const illegalCells = [];
+
+    while (path.length !== length) {
+      const point = getNextPossible(path, illegalCells, cellsX - 2, cellsY - 2);
+      if (!point) {
+        break;
+      }
+      illegalCells.push(...[point, ...getNeighbors(path[path.length - 1])]);
+      path.push(point);
+    }
   }
 
-  [
-    ...new Array(3).fill().map(() => [randX(), randY()]),
-    ...(() => {
-      // end point
-      let x, y;
-      if (Math.random() >= 0.5) {
-        x = cellsX - 2;
-        y = randY();
-        return [
-          [x, y],
-          [x + 1, y],
-          [x + 2, y],
-        ];
-      }
-      x = randX();
-      y = cellsY - 2;
-      return [
-        [x, y],
-        [x, y + 1],
-        [x, y + 2],
-      ];
-    })(),
-  ].map((segment) => {
-    path.push(...route(path[path.length - 1], segment));
-  });
+  if (path.length !== length) {
+    path = longest;
+  }
 
   return path;
 }
+
+const getNextPossible = (path, illegalCells, maxX, maxY) => {
+  const last = path[path.length - 1];
+
+  const possibilities = getNeighbors(last).filter((cell) => {
+    const [x, y] = cell;
+    return (
+      x >= 1 &&
+      x <= maxX &&
+      y >= 1 &&
+      y <= maxY &&
+      !illegalCells.some((illegal) => cellEquals(illegal, cell))
+    );
+  });
+  return possibilities[rand(0, possibilities.length - 1)];
+};
+
+const getNeighbors = (cell) => {
+  const [x, y] = cell;
+  return [
+    [x - 1, y],
+    [x + 1, y],
+    [x, y - 1],
+    [x, y + 1],
+  ];
+};
+
+const cellEquals = (c1, c2) => {
+  return c1[0] === c2[0] && c1[1] === c2[1];
+};
 
 const route = (from, to) => {
   const path = [];
@@ -60,7 +91,7 @@ const route = (from, to) => {
     const deltaY = to[1] - segment[1];
 
     if (deltaX && deltaY) {
-      if (Math.random() >= 0.5) {
+      if (flip()) {
         segment[0] += deltaX > 0 ? 1 : -1;
       } else {
         segment[1] += deltaY > 0 ? 1 : -1;

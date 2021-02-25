@@ -66,7 +66,7 @@ class Game {
     } = this;
 
     if (!this.wave.inProgress) {
-      this.sendWave();
+      // this.sendWave();
     }
 
     const now = Date.now();
@@ -78,8 +78,9 @@ class Game {
     ctx.fillRect(0, 0, gameWidth, gameHeight);
 
     // path
-    ctx.fillStyle = '#888';
-    this.path.forEach((segment) => {
+    this.path.forEach((segment, idx) => {
+      ctx.fillStyle =
+        idx === 0 ? '#090' : idx === this.path.length - 1 ? '#900' : '#888';
       ctx.fillRect(
         segment[0] * cellSize,
         segment[1] * cellSize,
