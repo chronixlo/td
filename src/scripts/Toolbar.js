@@ -128,13 +128,14 @@ class Toolbar {
         const turret = Game.selectedTurret || Game.placingTurret;
         if (turret) {
           const visibleProps = [
+            'dps',
             'radius',
             'shotInterval',
             'projectileSpeed',
             'projectileDamage',
           ];
           this.turretInfo.textContent = visibleProps
-            .map((prop) => prop + ': ' + turret[prop])
+            .map((prop) => prop + ': ' + Math.round(turret[prop]))
             .join('\n');
           if (Game.selectedTurret) {
             this.sellTurret.textContent = `Sell $ ${turret.sellPrice}`;

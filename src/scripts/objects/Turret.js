@@ -1,4 +1,4 @@
-let ID = 0;
+let ID = 1;
 
 export class Turret {
   constructor(options) {
@@ -19,5 +19,6 @@ export class Turret {
     this.color = options.color || '#fff';
     this.size = options.size || 10;
     this.sellPrice = Math.floor(options.price / 10);
+    this.dps = options.dps;
   }
 }

@@ -110,30 +110,31 @@ class Game {
     });
 
     // spawn
+    const spawnX = this.path[0][0] * cellSize + cellSize / 2;
+    const spawnY = this.path[0][1] * cellSize + cellSize / 2;
     ctx.fillStyle = '#8a8';
     ctx.beginPath();
-    ctx.arc(
-      this.path[0][0] * cellSize + cellSize / 2,
-      this.path[0][1] * cellSize + cellSize / 2,
-      cellSize / 3,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(spawnX, spawnY, cellSize / 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
 
-    // goal
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('s', spawnX, spawnY);
+
+    // end
+    const endX = this.path[this.path.length - 1][0] * cellSize + cellSize / 2;
+    const endY = this.path[this.path.length - 1][1] * cellSize + cellSize / 2;
     ctx.fillStyle = '#a88';
     ctx.beginPath();
-    ctx.arc(
-      this.path[this.path.length - 1][0] * cellSize + cellSize / 2,
-      this.path[this.path.length - 1][1] * cellSize + cellSize / 2,
-      cellSize / 3,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(endX, endY, cellSize / 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
+
+    ctx.fillStyle = '#fff';
+    ctx.fillText('e', endX, endY);
 
     // grid
     ctx.strokeStyle = '#fffa';
