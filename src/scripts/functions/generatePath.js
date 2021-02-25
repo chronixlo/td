@@ -1,6 +1,6 @@
 import { rand, flip } from './helpers';
 
-export default function generatePath(cellsX, cellsY, length = 50) {
+export default function generatePath(cellsX, cellsY, length) {
   const randX = () => rand(1, cellsX - 2);
   const randY = () => rand(1, cellsY - 2);
 
@@ -77,32 +77,4 @@ const getNeighbors = (cell) => {
 
 const cellEquals = (c1, c2) => {
   return c1[0] === c2[0] && c1[1] === c2[1];
-};
-
-const route = (from, to) => {
-  const path = [];
-  const distanceX = Math.abs(to[0] - from[0]);
-  const distanceY = Math.abs(to[1] - from[1]);
-  const distance = distanceX + distanceY;
-  const segment = [...from];
-
-  for (let i = 0; i < distance; i++) {
-    const deltaX = to[0] - segment[0];
-    const deltaY = to[1] - segment[1];
-
-    if (deltaX && deltaY) {
-      if (flip()) {
-        segment[0] += deltaX > 0 ? 1 : -1;
-      } else {
-        segment[1] += deltaY > 0 ? 1 : -1;
-      }
-    } else if (deltaX) {
-      segment[0] += deltaX > 0 ? 1 : -1;
-    } else {
-      segment[1] += deltaY > 0 ? 1 : -1;
-    }
-    path.push([...segment]);
-  }
-
-  return path;
 };

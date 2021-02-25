@@ -40,7 +40,11 @@ class Game {
     this.projectiles = [];
     this.enemies = [];
 
-    this.path = generatePath(this.gridWidth, this.gridHeight);
+    this.path = generatePath(
+      this.gridWidth,
+      this.gridHeight,
+      (this.gridWidth * this.gridHeight) / 2
+    );
 
     this.advance();
 
@@ -77,10 +81,9 @@ class Game {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, gameWidth, gameHeight);
 
-    // path
-    this.path.forEach((segment, idx) => {
-      ctx.fillStyle =
-        idx === 0 ? '#090' : idx === this.path.length - 1 ? '#900' : '#888';
+    // path outer
+    this.path.forEach((segment) => {
+      ctx.fillStyle = '#aaa';
       ctx.fillRect(
         segment[0] * cellSize,
         segment[1] * cellSize,
@@ -89,8 +92,51 @@ class Game {
       );
     });
 
+    const pathPadding = 4;
+
+    // path inner
+    this.path.forEach((segment, idx) => {
+      if (idx < 1 || idx > this.path.length - 1) {
+        return;
+      }
+      const prev = this.path[idx - 1];
+      const x1 = Math.min(segment[0], prev[0]) * cellSize + pathPadding;
+      const x2 = Math.max(segment[0], prev[0]) * cellSize - pathPadding;
+      const y1 = Math.min(segment[1], prev[1]) * cellSize + pathPadding;
+      const y2 = Math.max(segment[1], prev[1]) * cellSize - pathPadding;
+
+      ctx.fillStyle = '#666';
+      ctx.fillRect(x1, y1, x2 - x1 + cellSize, y2 - y1 + cellSize);
+    });
+
+    // spawn
+    ctx.fillStyle = '#8a8';
+    ctx.beginPath();
+    ctx.arc(
+      this.path[0][0] * cellSize + cellSize / 2,
+      this.path[0][1] * cellSize + cellSize / 2,
+      cellSize / 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.closePath();
+
+    // goal
+    ctx.fillStyle = '#a88';
+    ctx.beginPath();
+    ctx.arc(
+      this.path[this.path.length - 1][0] * cellSize + cellSize / 2,
+      this.path[this.path.length - 1][1] * cellSize + cellSize / 2,
+      cellSize / 3,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+    ctx.closePath();
+
     // grid
-    ctx.strokeStyle = '#ccc';
+    ctx.strokeStyle = '#fffa';
 
     for (let y = 0; y <= gridHeight; y++) {
       ctx.beginPath();
@@ -308,7 +354,7 @@ class Game {
       this.wave.finishedAt = now;
     }
 
-    if (this.wave.finishedAt && this.wave.finishedAt + 3000 < now) {
+    if (this.wave.finishedAt && this.wave.finishedAt + 1000 < now) {
       this.advance();
     }
 

@@ -125,16 +125,22 @@ class Toolbar {
         Game.placingTurret && Game.placingTurret.typeId,
       ],
       () => {
-        if (Game.selectedTurret || Game.placingTurret) {
-          this.turretInfo.textContent = JSON.stringify(
-            Game.selectedTurret || Game.placingTurret
-          )
-            .slice(1, -1)
-            .split(',')
+        const turret = Game.selectedTurret || Game.placingTurret;
+        if (turret) {
+          const visibleProps = [
+            'radius',
+            'shotInterval',
+            'projectileSpeed',
+            'projectileDamage',
+          ];
+          this.turretInfo.textContent = visibleProps
+            .map((prop) => prop + ': ' + turret[prop])
             .join('\n');
           if (Game.selectedTurret) {
-            this.sellTurret.textContent = `Sell $ ${Game.selectedTurret.sellPrice}`;
+            this.sellTurret.textContent = `Sell $ ${turret.sellPrice}`;
             this.sellTurret.classList.add('visible');
+          } else {
+            this.sellTurret.classList.remove('visible');
           }
           return;
         }
