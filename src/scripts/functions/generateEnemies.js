@@ -6,30 +6,23 @@ const RENDERERS = [
   null,
   function (ctx) {
     ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.fillRect(
+      this.x - this.size / 2,
+      this.y - this.size / 2,
+      this.size,
+      this.size
+    );
 
     ctx.fillStyle = this.accentColor;
     ctx.beginPath();
-    ctx.arc(
-      this.x + this.size / 2,
-      this.y + this.size / 2,
-      this.size / 3,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(this.x, this.y, this.size / 3, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
   },
   function (ctx) {
     ctx.fillStyle = this.color;
     ctx.beginPath();
-    ctx.arc(
-      this.x + this.size / 2,
-      this.y + this.size / 2,
-      this.size / 2,
-      0,
-      Math.PI * 2
-    );
+    ctx.arc(this.x, this.y, this.size / 2, 0, Math.PI * 2);
     ctx.fill();
     ctx.closePath();
   },
@@ -52,7 +45,7 @@ export function generateEnemy(level) {
     speed,
     size,
     health,
-    money: level / 2,
+    money: Math.ceil(level / 8),
     color: color(),
     accentColor: '#fffa',
     render: RENDERERS[rand(0, RENDERERS.length - 1)],

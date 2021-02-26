@@ -333,17 +333,13 @@ class Game {
 
   getEnemyOffsetX(enemy) {
     return (
-      enemy.nextSegment[0] * this.cellSize +
-      enemy.cellOffsetX * this.cellSize -
-      0.5 * enemy.size
+      enemy.nextSegment[0] * this.cellSize + enemy.cellOffsetX * this.cellSize
     );
   }
 
   getEnemyOffsetY(enemy) {
     return (
-      enemy.nextSegment[1] * this.cellSize +
-      enemy.cellOffsetY * this.cellSize -
-      0.5 * enemy.size
+      enemy.nextSegment[1] * this.cellSize + enemy.cellOffsetY * this.cellSize
     );
   }
 
@@ -360,14 +356,8 @@ class Game {
           new Enemy(
             Object.assign(
               {
-                x:
-                  this.path[0][0] * this.cellSize +
-                  this.cellSize / 2 -
-                  size / 2,
-                y:
-                  this.path[0][1] * this.cellSize +
-                  this.cellSize / 2 -
-                  size / 2,
+                x: this.path[0][0] * this.cellSize + this.cellSize / 2,
+                y: this.path[0][1] * this.cellSize + this.cellSize / 2,
               },
               this.wave.enemyTypes[idx]
             )

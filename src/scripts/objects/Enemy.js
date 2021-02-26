@@ -1,5 +1,6 @@
 export class Enemy {
   constructor(options) {
+    // center
     this.x = options.x;
     this.y = options.y;
     // pixels per second
@@ -9,6 +10,7 @@ export class Enemy {
     this.lastSegment = null;
     this.nextSegment = null;
     this.lastSegmentIndex = null;
+    // this is busted
     this.cellOffsetX = options.cellOffsetX || 0.5;
     this.cellOffsetY = options.cellOffsetY || 0.5;
     this.money = options.money;
@@ -23,6 +25,11 @@ export class Enemy {
       return;
     }
     ctx.fillStyle = this.color;
-    ctx.fillRect(this.x, this.y, this.size, this.size);
+    ctx.fillRect(
+      this.x - this.size / 2,
+      this.y - this.size / 2,
+      this.size,
+      this.size
+    );
   }
 }
