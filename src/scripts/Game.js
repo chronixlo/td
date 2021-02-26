@@ -12,14 +12,14 @@ class Game {
     const canvas = (this.canvas = document.getElementById('game'));
     this.ctx = this.canvas.getContext('2d');
 
-    this.gameWidth = 800;
-    this.gameHeight = 450;
+    this.gameWidth = Math.min(window.innerWidth, 800);
+    this.gameHeight = this.gameWidth / 2;
 
     canvas.height = this.gameHeight;
     canvas.width = this.gameWidth;
 
     this.gridWidth = 16;
-    this.gridHeight = 9;
+    this.gridHeight = 8;
     this.cellSize = this.gameWidth / this.gridWidth;
 
     this.mouseX;
@@ -31,6 +31,7 @@ class Game {
     this.autorun = false;
 
     this.money = 100;
+    this.missed = 0;
 
     this.wave = {
       number: 0,
@@ -85,11 +86,14 @@ class Game {
 
     renderMap();
 
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px monospace';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`Missed: ${this.missed}`, this.gameWidth - 10, 10);
+
     // wave status
-    // ctx.fillStyle = '#fff';
-    // ctx.font = '20px monospace';
-    // ctx.textAlign = 'right';
-    // ctx.textBaseline = 'top';
+
     // ctx.fillText(
     //   `Remaining: ${this.wave.total - this.wave.missed - this.wave.killed}`,
     //   gameWidth - 10,
@@ -132,6 +136,7 @@ class Game {
       if (!enemy.nextSegment) {
         // this.enemies.splice(i, 1);
         this.wave.missed++;
+        this.missed++;
         enemy.health = 0;
         continue;
       }
