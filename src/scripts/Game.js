@@ -5,6 +5,7 @@ import generatePath from './functions/generatePath';
 import generateTurrets from './functions/generateTurrets';
 import generateEnemies from './functions/generateEnemies';
 import { rand } from './functions/helpers';
+import renderMap from './functions/renderMap';
 
 class Game {
   constructor() {
@@ -26,6 +27,8 @@ class Game {
 
     this.selectedTurret;
     this.placingTurret;
+
+    this.autorun = false;
 
     this.money = 100;
 
@@ -54,106 +57,33 @@ class Game {
     canvas.addEventListener('mouseleave', this.onMouseLeave.bind(this));
     canvas.addEventListener('click', this.onClick.bind(this));
 
+    const loader = document.getElementById('loader');
+    const container = document.getElementById('container');
+    loader.classList.add('hide');
+    setTimeout(() => {
+      container.classList.add('descale');
+    }, 0);
+    setTimeout(() => {
+      loader.remove();
+    }, 300);
+
     this.draw = this.draw.bind(this);
 
     requestAnimationFrame(this.draw);
   }
 
   draw() {
-    const {
-      ctx,
-      gameWidth,
-      gameHeight,
-      cellSize,
-      gridHeight,
-      gridWidth,
-    } = this;
+    const { ctx, cellSize } = this;
 
-    if (!this.wave.inProgress) {
-      // this.sendWave();
+    if (!this.wave.inProgress && this.autorun) {
+      this.sendWave();
     }
 
     const now = Date.now();
     const delta = now - this.lastRender;
     const deltaSeconds = delta / 1000;
 
-    // background
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, gameWidth, gameHeight);
-
-    // path outer
-    this.path.forEach((segment) => {
-      ctx.fillStyle = '#aaa';
-      ctx.fillRect(
-        segment[0] * cellSize,
-        segment[1] * cellSize,
-        cellSize,
-        cellSize
-      );
-    });
-
-    const pathPadding = 4;
-
-    // path inner
-    this.path.forEach((segment, idx) => {
-      if (idx < 1 || idx > this.path.length - 1) {
-        return;
-      }
-      const prev = this.path[idx - 1];
-      const x1 = Math.min(segment[0], prev[0]) * cellSize + pathPadding;
-      const x2 = Math.max(segment[0], prev[0]) * cellSize - pathPadding;
-      const y1 = Math.min(segment[1], prev[1]) * cellSize + pathPadding;
-      const y2 = Math.max(segment[1], prev[1]) * cellSize - pathPadding;
-
-      ctx.fillStyle = '#666';
-      ctx.fillRect(x1, y1, x2 - x1 + cellSize, y2 - y1 + cellSize);
-    });
-
-    // spawn
-    const spawnX = this.path[0][0] * cellSize + cellSize / 2;
-    const spawnY = this.path[0][1] * cellSize + cellSize / 2;
-    ctx.fillStyle = '#8a8';
-    ctx.beginPath();
-    ctx.arc(spawnX, spawnY, cellSize / 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.closePath();
-
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('s', spawnX, spawnY);
-
-    // end
-    const endX = this.path[this.path.length - 1][0] * cellSize + cellSize / 2;
-    const endY = this.path[this.path.length - 1][1] * cellSize + cellSize / 2;
-    ctx.fillStyle = '#a88';
-    ctx.beginPath();
-    ctx.arc(endX, endY, cellSize / 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.closePath();
-
-    ctx.fillStyle = '#fff';
-    ctx.fillText('e', endX, endY);
-
-    // grid
-    ctx.strokeStyle = '#fffa';
-
-    for (let y = 0; y <= gridHeight; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * cellSize);
-      ctx.lineTo(gameWidth, y * cellSize);
-      ctx.stroke();
-      ctx.closePath();
-    }
-
-    for (let x = 0; x <= gridWidth; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * cellSize, 0);
-      ctx.lineTo(x * cellSize, gameHeight);
-      ctx.stroke();
-      ctx.closePath();
-    }
+    renderMap();
 
     // wave status
     // ctx.fillStyle = '#fff';
@@ -258,10 +188,9 @@ class Game {
       }
 
       if (now - turret.lastShot > turret.shotInterval) {
-        let didShoot = false;
         for (const idx in this.enemies) {
           const enemy = this.enemies[idx];
-          if (didShoot || enemy.health <= 0) {
+          if (enemy.health <= 0) {
             continue;
           }
           const dist = Math.hypot(x - enemy.x, y - enemy.y);
@@ -273,12 +202,12 @@ class Game {
                 speed: turret.projectileSpeed,
                 damage: turret.projectileDamage,
                 size: turret.projectileSize,
-                enemyIndex: idx,
+                enemy,
                 color: turret.projectileColor,
               })
             );
             turret.lastShot = now;
-            didShoot = true;
+            break;
           }
         }
       }
@@ -287,22 +216,14 @@ class Game {
     // process projectiles
     for (let i = this.projectiles.length - 1; i > -1; i--) {
       const projectile = this.projectiles[i];
-      const enemy = this.enemies[projectile.enemyIndex];
+      const enemy = projectile.enemy;
 
       if (!enemy || enemy.health <= 0) {
         this.projectiles.splice(i, 1);
         continue;
       }
 
-      const deltaX = enemy.x - projectile.x;
-      const deltaY = enemy.y - projectile.y;
-      const angle = Math.atan2(deltaY, deltaX);
-      const deltaDistance = Math.hypot(deltaX, deltaY);
-
-      const distance = Math.min(deltaDistance, projectile.speed * deltaSeconds);
-
-      projectile.x = Math.cos(angle) * distance + projectile.x;
-      projectile.y = Math.sin(angle) * distance + projectile.y;
+      projectile.update(deltaSeconds);
 
       // hit
       if (

@@ -24,6 +24,12 @@ body {
   width: 100%;
   max-width: 800px;
   overflow: hidden;
+  transform: scale(0.5);
+
+  &.descale {
+    transition: transform 600ms;
+    transform: scale(1);
+  }
 
   @media (min-width: 800px) and (min-height: 800px) {
     box-shadow: rgba(50, 50, 93, 0.25) 0px 6px 12px -2px, rgba(0, 0, 0, 0.3) 0px 3px 7px -3px;
@@ -162,4 +168,23 @@ canvas {
 #ready-button {
   border-radius: 0;
   display: inline;
+  position: relative;
+  padding-left: 4rem;
+}
+
+#autorun {
+  position: absolute;
+  top: calc(50% - 1rem);
+  left: 1rem;
+  margin: 0;
+  height: 2rem;
+  width: 2rem;
+}
+
+#loader {
+  transition: opacity 300ms;
+
+  &.hide {
+    opacity: 0;
+  }
 }

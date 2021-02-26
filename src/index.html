@@ -6,6 +6,7 @@
   <title>td</title>
 </head>
 <body>
+  <div id="loader" style="font-family:monospace;top:0;left:0;z-index:10;background:#333;position:absolute;width:100vw;height:100vh;display:flex;justify-content:center;align-items:center;font-size:60px">...</div>
   <div id="container">
     <canvas id="game"></canvas>
     <div id="toolbar">
@@ -13,7 +14,7 @@
         <div class="display" id="money"></div>
         <div class="display" id="wave-number"></div>
         <div id="ready-container">
-          <div id="ready-button" class="button">Ready</div>
+          <div id="ready-button" class="button"><input type="checkbox" id="autorun" /> Ready</div>
         </div>
       </div>
       <div id="turret-row">

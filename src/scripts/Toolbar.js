@@ -9,6 +9,7 @@ class Toolbar {
     this.money = document.getElementById('money');
     this.turretInfo = document.getElementById('turret-info');
     this.sellTurret = document.getElementById('sell-turret');
+    this.autorun = document.getElementById('autorun');
 
     this.turretButtons = [];
     this.turretButtonSize = 70;
@@ -79,6 +80,10 @@ class Toolbar {
       });
     });
 
+    this.autorun.addEventListener('change', (e) => {
+      Game.autorun = e.target.checked;
+    });
+
     this.readyButton.addEventListener('click', (e) => {
       e.stopPropagation();
       Game.sendWave();
@@ -98,6 +103,9 @@ class Toolbar {
   render() {
     this.callOrder = 0;
 
+    this.onChange([Game.autorun], () => {
+      this.autorun.checked = Game.autorun;
+    });
     this.onChange([Game.wave.inProgress], () => {
       if (Game.wave.inProgress) {
         this.readyButton.classList.add('disabled');
