@@ -1,4 +1,5 @@
 import Game from './Game';
+import { TURRET_BINDS } from './Hotkeys';
 
 class Toolbar {
   constructor() {
@@ -24,7 +25,7 @@ class Toolbar {
   }
 
   init() {
-    Game.turretTypes.forEach((turret) => {
+    Game.turretTypes.forEach((turret, idx) => {
       const turretButton = document.createElement('div');
       turretButton.classList.add('button', 'turret-button');
 
@@ -71,8 +72,13 @@ class Toolbar {
 
       const priceLabel = document.createElement('span');
       priceLabel.classList.add('price-label');
-      priceLabel.textContent = '$ ' + turret.price;
+      priceLabel.textContent = '$' + turret.price;
       turretButton.appendChild(priceLabel);
+
+      const hotkeyLabel = document.createElement('span');
+      hotkeyLabel.classList.add('hotkey-label');
+      hotkeyLabel.textContent = TURRET_BINDS[idx];
+      turretButton.appendChild(hotkeyLabel);
 
       this.turretButtons.push({
         turret,
@@ -98,6 +104,11 @@ class Toolbar {
     document.addEventListener('click', () => {
       Game.placeTurret(null);
     });
+
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      Game.placeTurret(null);
+    });
   }
 
   render() {
@@ -117,7 +128,7 @@ class Toolbar {
       this.waveNumber.textContent = 'Wave ' + Game.wave.number;
     });
     this.onChange([Game.money, this.turretButtons.length], () => {
-      this.money.textContent = '$ ' + Game.money;
+      this.money.textContent = '$' + Game.money;
 
       this.turretButtons.forEach((button) => {
         if (button.turret.price > Game.money) {
@@ -146,7 +157,7 @@ class Toolbar {
             .map((prop) => prop + ': ' + Math.round(turret[prop]))
             .join('\n');
           if (Game.selectedTurret) {
-            this.sellTurret.textContent = `Sell $ ${turret.sellPrice}`;
+            this.sellTurret.textContent = `Sell $${turret.sellPrice}`;
             this.sellTurret.classList.add('visible');
           } else {
             this.sellTurret.classList.remove('visible');

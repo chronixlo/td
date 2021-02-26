@@ -139,6 +139,7 @@ canvas {
 }
 
 .turret-button {
+  position: relative;
   padding: 0 1rem;
   margin: 0.5rem;
   border: 1px solid transparent;
@@ -156,6 +157,13 @@ canvas {
   }
 
   .price-label {
+    font-size: 1rem;
+  }
+
+  .hotkey-label {
+    position: absolute;
+    left: 4px;
+    top: 0;
     font-size: 1rem;
   }
 }

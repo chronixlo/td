@@ -418,6 +418,9 @@ class Game {
   }
 
   sellSelectedTurret() {
+    if (!this.selectedTurret) {
+      return;
+    }
     const idx = this.turrets.findIndex(
       (turret) => turret.id === this.selectedTurret.id
     );
