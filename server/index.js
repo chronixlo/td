@@ -8,6 +8,8 @@ const io = require('socket.io')(server, {
 
 const games = {};
 
+let TURRET_ID = 1;
+
 io.on('connection', (socket) => {
   console.log('a user connected');
 
@@ -15,16 +17,15 @@ io.on('connection', (socket) => {
 
   socket.on('create_game', (event) => {
     const { path, turretTypes, enemyTypes, gridWidth, gridHeight } = event;
-    let gameRoom = io.sockets.adapter.rooms[gameId] || {};
 
-    if (!gameId || gameRoom.length > 1) {
-      gameId = Math.random().toString(36).slice(2);
-    }
+    gameId = Math.random().toString(36).slice(2);
 
     const game = {
       gameId,
       player1: {
         id: socket.id,
+        money: 100,
+        ready: false,
       },
       player2: null,
       path,
@@ -62,6 +63,8 @@ io.on('connection', (socket) => {
     if (!game.player2) {
       game.player2 = {
         id: socket.id,
+        money: 100,
+        ready: false,
       };
     }
 
@@ -70,8 +73,27 @@ io.on('connection', (socket) => {
     socket.to(gameId).emit('player_join', game);
   });
 
-  socket.on('start', (event) => {
+  socket.on('ready', (event) => {
     const game = games[gameId];
+
+    if (!game) {
+      return;
+    }
+
+    if (game.player1.id === socket.id) {
+      game.player1.ready = true;
+    } else if (game.player2 && game.player2.id === socket.id) {
+      game.player2.ready = true;
+    }
+
+    if (!game.player1.ready || !game.player2 || !game.player2.ready) {
+      io.to(gameId).emit('update', {
+        player1: game.player1,
+        player2: game.player2,
+      });
+      return;
+    }
+
     let now = Date.now();
 
     game.wave.total = game.boughtEnemies.length;
@@ -227,7 +249,7 @@ io.on('connection', (socket) => {
           enemy.health -= projectile.damage;
           if (enemy.health <= 0) {
             game.wave.killed++;
-            game.money += enemy.money;
+            game.player2.money += enemy.money;
           }
           continue;
         }
@@ -250,12 +272,17 @@ io.on('connection', (socket) => {
           game.wave = generateWave(game.wave.number);
           game.projectiles = [];
           game.enemies = [];
+          game.player1.ready = false;
+          game.player2.ready = false;
+          game.player1.money += 50;
 
           io.to(gameId).emit('update', {
             enemies: game.enemies,
             projectiles: game.projectiles,
             missed: game.missed,
             wave: game.wave,
+            player1: game.player1,
+            player2: game.player2,
           });
         }, 1000);
 
@@ -267,21 +294,47 @@ io.on('connection', (socket) => {
   socket.on('place_turret', (turret) => {
     const game = games[gameId];
 
-    game.turrets.push(turret);
-
-    io.to(gameId).emit('update_turrets', { turrets: game.turrets });
+    if (game.player2.money >= turret.price) {
+      game.turrets.push(Object.assign({ id: TURRET_ID++ }, turret));
+      game.player2.money -= turret.price;
+      io.to(gameId).emit('update', {
+        turrets: game.turrets,
+        player2: game.player2,
+      });
+    }
   });
 
   socket.on('place_enemy', (typeId) => {
     const game = games[gameId];
 
-    game.boughtEnemies.push(
-      game.enemyTypes.find((enemy) => enemy.typeId === typeId)
-    );
+    const enemy = game.enemyTypes.find((enemy) => enemy.typeId === typeId);
 
-    io.to(gameId).emit('update_bought_enemies', {
-      boughtEnemies: game.boughtEnemies,
-    });
+    if (enemy && game.player1.money >= enemy.price) {
+      game.boughtEnemies.push(enemy);
+      game.player1.money -= enemy.price;
+
+      io.to(gameId).emit('update', {
+        boughtEnemies: game.boughtEnemies,
+        player1: game.player1,
+      });
+    }
+  });
+
+  socket.on('sell_turret', (id) => {
+    const game = games[gameId];
+
+    const idx = game.turrets.findIndex((turret) => turret.id === id);
+
+    if (idx !== -1) {
+      game.player2.money += game.turrets[idx].sellPrice;
+
+      game.turrets.splice(idx, 1);
+
+      io.to(gameId).emit('update', {
+        turrets: game.turrets,
+        player2: game.player2,
+      });
+    }
   });
 
   socket.on('disconnect', () => {
@@ -290,8 +343,9 @@ io.on('connection', (socket) => {
     Object.keys(games).forEach((id) => {
       const game = games[id];
       if (
-        game.player1.id === socket.id ||
-        (game.player2 && game.player2.id === socket.id)
+        game &&
+        (game.player1.id === socket.id ||
+          (game.player2 && game.player2.id === socket.id))
       ) {
         gameId = id;
       }

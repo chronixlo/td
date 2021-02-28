@@ -38,7 +38,8 @@ class Game {
 
     this.autorun = false;
 
-    this.money = 100;
+    this.player1 = options.player1;
+    this.player2 = options.player2;
     this.missed = 0;
 
     this.wave = options.wave;
@@ -313,15 +314,12 @@ class Game {
     );
 
     if (this.placingTurret) {
-      if (!turret && this.money >= this.placingTurret.price) {
+      if (!turret && this.player2.money >= this.placingTurret.price) {
         this.placingTurret.gridX = gridX;
         this.placingTurret.gridY = gridY;
         turret = new Turret(this.placingTurret);
-        this.money -= this.placingTurret.price;
         socket.emit('place_turret', this.placingTurret);
         this.placingTurret = null;
-
-        // this.turrets.push(turret);
       } else {
         this.placingTurret = null;
         return;
@@ -349,7 +347,7 @@ class Game {
       return;
     }
 
-    socket.emit('start', '');
+    socket.emit('ready', '');
   }
 
   placeTurret(turret) {
@@ -365,14 +363,7 @@ class Game {
 
   sellSelectedObject() {
     if (this.selectedTurret) {
-      const idx = this.turrets.findIndex(
-        (turret) => turret.id === this.selectedTurret.id
-      );
-      if (idx === -1) {
-        return;
-      }
-      this.turrets.splice(idx, 1);
-      this.money += this.selectedTurret.sellPrice;
+      socket.emit('sell_turret', this.selectedTurret.id);
       this.selectedTurret = null;
     } else if (this.selectedEnemy) {
       this.selectedEnemy = null;

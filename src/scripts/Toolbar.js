@@ -178,17 +178,33 @@ class Toolbar {
     this.onChange([this.game.wave.number], () => {
       this.waveNumber.textContent = 'Wave ' + this.game.wave.number;
     });
-    this.onChange([this.game.money, this.turretButtons.length], () => {
-      this.money.textContent = '$' + this.game.money;
+    this.onChange(
+      [
+        this.game.player1 && this.game.player1.money,
+        this.game.player2 && this.game.player2.money,
+        this.turretButtons.length,
+      ],
+      () => {
+        this.money.textContent =
+          '$' +
+          (this.game.isAttacker
+            ? this.game.player1.money
+            : this.game.player2.money);
 
-      this.turretButtons.forEach((button) => {
-        if (button.object.price > this.game.money) {
-          button.element.classList.add('disabled');
-        } else {
-          button.element.classList.remove('disabled');
-        }
-      });
-    });
+        this.turretButtons.forEach((button) => {
+          if (
+            button.object.price >
+            (this.game.isAttacker
+              ? this.game.player1.money
+              : this.game.player2.money)
+          ) {
+            button.element.classList.add('disabled');
+          } else {
+            button.element.classList.remove('disabled');
+          }
+        });
+      }
+    );
     this.onChange(
       [
         this.game.selectedTurret && this.game.selectedTurret.id,
@@ -237,6 +253,21 @@ class Toolbar {
         this.sellTurret.classList.remove('visible');
         this.buyButton.classList.remove('visible');
         this.turretInfo.textContent = '';
+      }
+    );
+    this.onChange(
+      [
+        this.game.placingEnemy && this.game.placingEnemy.typeId,
+        this.game.player1 && this.game.player1.money,
+      ],
+      () => {
+        if (this.game.placingEnemy && this.game.player1) {
+          if (this.game.placingEnemy.price > this.game.player1.money) {
+            this.buyButton.classList.add('disabled');
+          } else {
+            this.buyButton.classList.remove('disabled');
+          }
+        }
       }
     );
     this.onChange(

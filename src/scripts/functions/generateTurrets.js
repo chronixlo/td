@@ -24,6 +24,7 @@ export function generateTurret(level) {
   return {
     typeId: ++ID,
     price,
+    sellPrice: Math.round(price / 10),
     radius: 1 + 4 * rangeScale,
     color: color(),
     size: 10 + 10 * rangeScale,

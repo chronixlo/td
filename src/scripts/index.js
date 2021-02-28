@@ -44,13 +44,16 @@ socket.on('connect', (e) => {
 
 socket.on('join', (gameInfo, isAttacker) => {
   game = new Game(gameInfo, isAttacker);
+  if (!gameInfo.player2) {
+    game.status = 'WAITING_OPPONENT';
+  }
   menu.classList.add('hidden');
   container.classList.remove('hidden');
   history.replaceState(null, null, '/?' + gameInfo.gameId);
 });
 
 socket.on('player_join', (e) => {
-  console.log(e);
+  game.status = null;
 });
 
 socket.on('terminated', (e) => {
@@ -62,21 +65,35 @@ socket.on('not_found', (e) => {
 });
 
 socket.on('update', (e) => {
-  game.enemies = e.enemies.map((enemy) => new Enemy(enemy));
-  game.projectiles = e.projectiles.map(
-    (projectile) => new Projectile(projectile)
-  );
-  game.missed = e.missed;
+  if (e.enemies) {
+    game.enemies = e.enemies.map((enemy) => new Enemy(enemy));
+  }
+  if (e.projectiles) {
+    game.projectiles = e.projectiles.map(
+      (projectile) => new Projectile(projectile)
+    );
+  }
+  if (e.missed) {
+    game.missed = e.missed;
+  }
 
   if (e.wave) {
     game.wave = e.wave;
   }
-});
 
-socket.on('update_turrets', (e) => {
-  game.turrets = e.turrets.map((turret) => new Turret(turret));
-});
+  if (e.boughtEnemies) {
+    game.boughtEnemies = e.boughtEnemies;
+  }
 
-socket.on('update_bought_enemies', (e) => {
-  game.boughtEnemies = e.boughtEnemies;
+  if (e.turrets) {
+    game.turrets = e.turrets.map((turret) => new Turret(turret));
+  }
+
+  if (e.player1) {
+    game.player1 = e.player1;
+  }
+
+  if (e.player2) {
+    game.player2 = e.player2;
+  }
 });
