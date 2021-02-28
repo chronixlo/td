@@ -53,6 +53,10 @@ socket.on('player_join', (e) => {
   console.log(e);
 });
 
+socket.on('terminated', (e) => {
+  game.status = 'TERMINATED';
+});
+
 socket.on('not_found', (e) => {
   history.replaceState(null, null, '/');
 });
@@ -63,8 +67,16 @@ socket.on('update', (e) => {
     (projectile) => new Projectile(projectile)
   );
   game.missed = e.missed;
+
+  if (e.wave) {
+    game.wave = e.wave;
+  }
 });
 
 socket.on('update_turrets', (e) => {
   game.turrets = e.turrets.map((turret) => new Turret(turret));
+});
+
+socket.on('update_bought_enemies', (e) => {
+  game.boughtEnemies = e.boughtEnemies;
 });

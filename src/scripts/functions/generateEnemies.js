@@ -38,6 +38,7 @@ export function generateEnemy(level) {
   const speed = 50 + 100 * powerScale * (1 - healthScale);
   const health = 10 * Math.pow(powerScale, 4) * healthScale;
   const size = 10 + health / 10;
+  const price = level;
 
   return {
     typeId: ++ID,
@@ -45,7 +46,8 @@ export function generateEnemy(level) {
     speed,
     size,
     health,
-    money: Math.ceil(level / 6),
+    money: Math.round(price / 2),
+    price,
     color: color(),
     accentColor: '#fffa',
     // render: RENDERERS[rand(0, RENDERERS.length - 1)],

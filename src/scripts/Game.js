@@ -33,6 +33,9 @@ class Game {
     this.selectedTurret;
     this.placingTurret;
 
+    this.selectedEnemy;
+    this.placingEnemy;
+
     this.autorun = false;
 
     this.money = 100;
@@ -43,6 +46,7 @@ class Game {
     this.turretTypes = options.turretTypes;
     this.enemyTypes = options.enemyTypes;
 
+    this.boughtEnemies = [];
     this.turrets = [];
     this.projectiles = [];
     this.enemies = [];
@@ -325,6 +329,7 @@ class Game {
     }
 
     this.selectedTurret = turret;
+    this.selectedEnemy = null;
   }
 
   getEnemyOffsetX(enemy) {
@@ -343,23 +348,8 @@ class Game {
     if (this.wave.inProgress) {
       return;
     }
-    this.wave.inProgress = true;
 
-    for (let idx in this.wave.enemyTypes) {
-      setTimeout(() => {
-        this.enemies.push(
-          new Enemy(
-            Object.assign(
-              {
-                x: this.path[0][0] * this.cellSize + this.cellSize / 2,
-                y: this.path[0][1] * this.cellSize + this.cellSize / 2,
-              },
-              this.wave.enemyTypes[idx]
-            )
-          )
-        );
-      }, idx * 300);
-    }
+    socket.emit('start', '');
   }
 
   placeTurret(turret) {
@@ -367,19 +357,26 @@ class Game {
     this.selectedTurret = null;
   }
 
-  sellSelectedTurret() {
-    if (!this.selectedTurret) {
-      return;
-    }
-    const idx = this.turrets.findIndex(
-      (turret) => turret.id === this.selectedTurret.id
-    );
-    if (idx === -1) {
-      return;
-    }
-    this.turrets.splice(idx, 1);
-    this.money += this.selectedTurret.sellPrice;
+  placeEnemy(enemy) {
+    this.placingEnemy = enemy;
     this.selectedTurret = null;
+    this.selectedEnemy = null;
+  }
+
+  sellSelectedObject() {
+    if (this.selectedTurret) {
+      const idx = this.turrets.findIndex(
+        (turret) => turret.id === this.selectedTurret.id
+      );
+      if (idx === -1) {
+        return;
+      }
+      this.turrets.splice(idx, 1);
+      this.money += this.selectedTurret.sellPrice;
+      this.selectedTurret = null;
+    } else if (this.selectedEnemy) {
+      this.selectedEnemy = null;
+    }
   }
 }
 

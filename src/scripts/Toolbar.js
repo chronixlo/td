@@ -1,3 +1,4 @@
+import { socket } from '.';
 import { TURRET_BINDS } from './Hotkeys';
 
 class Toolbar {
@@ -10,6 +11,7 @@ class Toolbar {
     this.money = document.getElementById('money');
     this.turretInfo = document.getElementById('turret-info');
     this.sellTurret = document.getElementById('sell-turret');
+    this.buyButton = document.getElementById('buy-button');
     this.autorun = document.getElementById('autorun');
     this.status = document.getElementById('status');
 
@@ -28,58 +30,42 @@ class Toolbar {
   init() {
     if (this.game.isAttacker) {
       this.game.enemyTypes.forEach((enemy, idx) => {
-        const turretButton = document.createElement('div');
-        turretButton.classList.add('button', 'turret-button');
+        const enemyButton = document.createElement('div');
+        enemyButton.classList.add('button', 'turret-button');
 
-        turretButton.addEventListener('click', (e) => {
+        enemyButton.addEventListener('click', (e) => {
           e.stopPropagation();
-          this.game.placeTurret(turret);
+          this.game.placeEnemy(enemy);
         });
 
-        this.turrets.appendChild(turretButton);
+        this.turrets.appendChild(enemyButton);
 
         const buttonCanvas = document.createElement('canvas');
-        turretButton.appendChild(buttonCanvas);
+        enemyButton.appendChild(buttonCanvas);
         buttonCanvas.width = buttonCanvas.height = this.turretButtonSize;
 
         const ctx = buttonCanvas.getContext('2d');
-        ctx.fillStyle = turret.color;
-        ctx.beginPath();
-        ctx.arc(
-          this.turretButtonSize / 2,
-          this.turretButtonSize / 2,
-          turret.size,
-          0,
-          Math.PI * 2
+        ctx.fillStyle = enemy.color;
+        ctx.fillRect(
+          this.turretButtonSize / 2 - enemy.size / 2,
+          this.turretButtonSize / 2 - enemy.size / 2,
+          enemy.size,
+          enemy.size
         );
-        ctx.fill();
-        ctx.closePath();
-
-        ctx.fillStyle = turret.projectileColor;
-        ctx.beginPath();
-        ctx.arc(
-          this.turretButtonSize / 2 + turret.size + turret.projectileSize / 2,
-          this.turretButtonSize / 2 - turret.size - turret.projectileSize / 2,
-          turret.projectileSize,
-          0,
-          Math.PI * 2
-        );
-        ctx.fill();
-        ctx.closePath();
 
         const priceLabel = document.createElement('span');
         priceLabel.classList.add('price-label');
-        priceLabel.textContent = '$' + turret.price;
-        turretButton.appendChild(priceLabel);
+        priceLabel.textContent = '$' + enemy.price;
+        enemyButton.appendChild(priceLabel);
 
         const hotkeyLabel = document.createElement('span');
         hotkeyLabel.classList.add('hotkey-label');
         hotkeyLabel.textContent = TURRET_BINDS[idx];
-        turretButton.appendChild(hotkeyLabel);
+        enemyButton.appendChild(hotkeyLabel);
 
         this.turretButtons.push({
-          turret,
-          element: turretButton,
+          object: enemy,
+          element: enemyButton,
         });
       });
     } else {
@@ -134,7 +120,7 @@ class Toolbar {
         turretButton.appendChild(hotkeyLabel);
 
         this.turretButtons.push({
-          turret,
+          object: turret,
           element: turretButton,
         });
       });
@@ -148,20 +134,28 @@ class Toolbar {
       e.stopPropagation();
       this.game.sendWave();
       this.game.placeTurret(null);
+      this.game.placeEnemy(null);
     });
 
     this.sellTurret.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.game.sellSelectedTurret();
+      this.game.sellSelectedObject();
+    });
+
+    this.buyButton.addEventListener('click', (e) => {
+      e.stopPropagation();
+      socket.emit('place_enemy', this.game.placingEnemy.typeId);
     });
 
     document.addEventListener('click', () => {
       this.game.placeTurret(null);
+      this.game.placeEnemy(null);
     });
 
     document.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       this.game.placeTurret(null);
+      this.game.placeEnemy(null);
     });
   }
 
@@ -188,7 +182,7 @@ class Toolbar {
       this.money.textContent = '$' + this.game.money;
 
       this.turretButtons.forEach((button) => {
-        if (button.turret.price > this.game.money) {
+        if (button.object.price > this.game.money) {
           button.element.classList.add('disabled');
         } else {
           button.element.classList.remove('disabled');
@@ -199,9 +193,12 @@ class Toolbar {
       [
         this.game.selectedTurret && this.game.selectedTurret.id,
         this.game.placingTurret && this.game.placingTurret.typeId,
+        this.game.selectedEnemy && this.game.selectedEnemy.id,
+        this.game.placingEnemy && this.game.placingEnemy.typeId,
       ],
       () => {
         const turret = this.game.selectedTurret || this.game.placingTurret;
+        const enemy = this.game.selectedEnemy || this.game.placingEnemy;
         if (turret) {
           const visibleProps = [
             'dps',
@@ -213,26 +210,47 @@ class Toolbar {
           this.turretInfo.textContent = visibleProps
             .map((prop) => prop + ': ' + Math.round(turret[prop]))
             .join('\n');
-          if (this.game.selectedTurret) {
+          if (this.game.selectedTurret && !this.game.isAttacker) {
             this.sellTurret.textContent = `Sell $${turret.sellPrice}`;
             this.sellTurret.classList.add('visible');
           } else {
             this.sellTurret.classList.remove('visible');
           }
           return;
+        } else if (enemy) {
+          const visibleProps = ['health', 'speed'];
+          this.turretInfo.textContent = visibleProps
+            .map((prop) => prop + ': ' + Math.round(enemy[prop]))
+            .join('\n');
+          if (this.game.selectedEnemy) {
+            this.sellTurret.textContent = `Sell $${enemy.sellPrice}`;
+            this.sellTurret.classList.add('visible');
+            this.buyButton.classList.remove('visible');
+          } else {
+            this.sellTurret.classList.remove('visible');
+            this.buyButton.textContent = `Buy $${enemy.price}`;
+            this.buyButton.classList.add('visible');
+          }
+          return;
         }
 
         this.sellTurret.classList.remove('visible');
+        this.buyButton.classList.remove('visible');
         this.turretInfo.textContent = '';
       }
     );
     this.onChange(
-      [this.game.placingTurret && this.game.placingTurret.typeId],
+      [
+        this.game.placingTurret && this.game.placingTurret.typeId,
+        this.game.placingEnemy && this.game.placingEnemy.typeId,
+      ],
       () => {
         this.turretButtons.forEach((button) => {
           if (
-            this.game.placingTurret &&
-            this.game.placingTurret.typeId === button.turret.typeId
+            (this.game.placingTurret &&
+              this.game.placingTurret.typeId === button.object.typeId) ||
+            (this.game.placingEnemy &&
+              this.game.placingEnemy.typeId === button.object.typeId)
           ) {
             button.element.classList.add('selected');
           } else {

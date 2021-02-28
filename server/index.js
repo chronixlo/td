@@ -15,7 +15,6 @@ io.on('connection', (socket) => {
 
   socket.on('create_game', (event) => {
     const { path, turretTypes, enemyTypes, gridWidth, gridHeight } = event;
-    gameId = socket.handshake.query.gameId;
     let gameRoom = io.sockets.adapter.rooms[gameId] || {};
 
     if (!gameId || gameRoom.length > 1) {
@@ -39,6 +38,7 @@ io.on('connection', (socket) => {
       gridHeight,
       gridWidth,
       missed: 0,
+      boughtEnemies: [],
     };
 
     games[gameId] = game;
@@ -54,14 +54,16 @@ io.on('connection', (socket) => {
 
     const game = games[gameId];
 
-    if (!game || game.player2) {
+    if (!game) {
       socket.emit('not_found');
       return;
     }
 
-    game.player2 = {
-      id: socket.id,
-    };
+    if (!game.player2) {
+      game.player2 = {
+        id: socket.id,
+      };
+    }
 
     socket.join(gameId);
     socket.emit('join', game, false);
@@ -72,7 +74,17 @@ io.on('connection', (socket) => {
     const game = games[gameId];
     let now = Date.now();
 
-    for (let idx in game.wave.enemyTypes) {
+    game.wave.total = game.boughtEnemies.length;
+    game.wave.inProgress = true;
+
+    io.to(gameId).emit('update', {
+      enemies: game.enemies,
+      projectiles: game.projectiles,
+      missed: game.missed,
+      wave: game.wave,
+    });
+
+    for (let idx in game.boughtEnemies.slice()) {
       setTimeout(() => {
         game.enemies.push(
           Object.assign(
@@ -80,17 +92,13 @@ io.on('connection', (socket) => {
               x: game.path[0][0] * game.cellSize + game.cellSize / 2,
               y: game.path[0][1] * game.cellSize + game.cellSize / 2,
             },
-            game.wave.enemyTypes[idx]
+            game.boughtEnemies[idx]
           )
         );
       }, idx * 300);
     }
 
-    io.to(gameId).emit('update', {
-      enemies: game.enemies,
-    });
-
-    setInterval(() => {
+    const interval = setInterval(() => {
       const deltaSeconds = 16 / 1000;
       now += 16;
       const cellSize = game.cellSize;
@@ -100,8 +108,8 @@ io.on('connection', (socket) => {
         const enemy = game.enemies[i];
         if (enemy.health <= 0) {
           // can't slice as turret's target is enemy index
-          game.enemies.splice(i, 1);
-          game.wave.killed++;
+          // game.enemies.splice(i, 1);
+          // game.wave.killed++;
           continue;
         }
         if (!enemy.nextSegment) {
@@ -228,7 +236,31 @@ io.on('connection', (socket) => {
       io.to(gameId).emit('update', {
         enemies: game.enemies,
         projectiles: game.projectiles,
+        missed: game.missed,
       });
+
+      if (
+        !game.wave.finishedAt &&
+        game.wave.total - game.wave.missed - game.wave.killed < 1
+      ) {
+        game.wave.finishedAt = now;
+        clearInterval(interval);
+
+        setTimeout(() => {
+          game.wave = generateWave(game.wave.number);
+          game.projectiles = [];
+          game.enemies = [];
+
+          io.to(gameId).emit('update', {
+            enemies: game.enemies,
+            projectiles: game.projectiles,
+            missed: game.missed,
+            wave: game.wave,
+          });
+        }, 1000);
+
+        return;
+      }
     }, 16);
   });
 
@@ -240,8 +272,35 @@ io.on('connection', (socket) => {
     io.to(gameId).emit('update_turrets', { turrets: game.turrets });
   });
 
+  socket.on('place_enemy', (typeId) => {
+    const game = games[gameId];
+
+    game.boughtEnemies.push(
+      game.enemyTypes.find((enemy) => enemy.typeId === typeId)
+    );
+
+    io.to(gameId).emit('update_bought_enemies', {
+      boughtEnemies: game.boughtEnemies,
+    });
+  });
+
   socket.on('disconnect', () => {
-    socket.to(gameId).emit('player_quit');
+    let gameId;
+
+    Object.keys(games).forEach((id) => {
+      const game = games[id];
+      if (
+        game.player1.id === socket.id ||
+        (game.player2 && game.player2.id === socket.id)
+      ) {
+        gameId = id;
+      }
+    });
+
+    if (gameId) {
+      games[gameId] = null;
+      io.to(gameId).emit('terminated');
+    }
   });
 });
 
@@ -255,34 +314,15 @@ function getEnemyOffsetY(enemy) {
   return enemy.nextSegment[1] * 50 + 0.5 * 50;
 }
 
-function generateWave(lastNumber = 0, enemyTypes) {
+function generateWave(lastNumber = 0) {
   const number = lastNumber + 1;
-
-  const enemyBudget = (10 + number) * 14;
-  let budgetLeft = enemyBudget;
-  const waveEnemyTypes = [];
-
-  while (budgetLeft > 0) {
-    const possibleEnemyTypes = waveEnemyTypes.filter(
-      (enemyType) => enemyType.level <= budgetLeft
-    );
-
-    if (!possibleEnemyTypes.length) {
-      break;
-    }
-    const enemyType =
-      possibleEnemyTypes[rand(0, possibleEnemyTypes.length - 1)];
-    waveEnemyTypes.push(enemyType);
-    budgetLeft -= enemyType.level;
-  }
 
   return {
     number,
-    total: waveEnemyTypes.length,
+    total: 0,
     killed: 0,
     missed: 0,
     inProgress: false,
     finishedAt: null,
-    enemyTypes: waveEnemyTypes,
   };
 }

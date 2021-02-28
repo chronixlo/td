@@ -96,7 +96,7 @@ canvas {
   padding-top: 0.5rem;
 }
 
-#sell-turret {
+#sell-turret, #buy-button {
   display: none;
   &.visible {
     display: inline-block;
@@ -140,7 +140,7 @@ canvas {
   position: relative;
   padding: 0 1rem;
   margin: 0.5rem;
-  border: 1px solid transparent;
+  border: 5px solid transparent;
   width: calc(100% / 3 - 1rem);
 
   &.selected {

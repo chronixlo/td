@@ -14,6 +14,8 @@ export class Enemy {
     this.cellOffsetX = options.cellOffsetX || 0.5;
     this.cellOffsetY = options.cellOffsetY || 0.5;
     this.money = options.money;
+    this.price = options.price;
+    this.sellPrice = Math.floor(options.price / 10);
     this.color = options.color;
     this.accentColor = options.accentColor;
     this.customRender = options.render;
