@@ -48,6 +48,6 @@ export function generateEnemy(level) {
     money: Math.ceil(level / 6),
     color: color(),
     accentColor: '#fffa',
-    render: RENDERERS[rand(0, RENDERERS.length - 1)],
+    // render: RENDERERS[rand(0, RENDERERS.length - 1)],
   };
 }

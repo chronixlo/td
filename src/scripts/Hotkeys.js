@@ -1,15 +1,14 @@
-import Game from './Game';
-
 export const TURRET_BINDS = ['q', 'w', 'e', 'a', 's', 'd'];
 
 class Hotkeys {
-  constructor() {
+  constructor(game) {
+    this.game = game;
     this.keys = {
-      Delete: () => Game.sellSelectedTurret(),
+      Delete: () => this.game.sellSelectedTurret(),
     };
 
     TURRET_BINDS.forEach((bind, idx) => {
-      this.keys[bind] = () => Game.placeTurret(Game.turretTypes[idx]);
+      this.keys[bind] = () => this.game.placeTurret(this.game.turretTypes[idx]);
     });
 
     document.addEventListener('keyup', this.onKeyPress.bind(this));
@@ -20,4 +19,4 @@ class Hotkeys {
   }
 }
 
-export default new Hotkeys();
+export default Hotkeys;

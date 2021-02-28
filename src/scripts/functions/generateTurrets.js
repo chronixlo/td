@@ -33,5 +33,6 @@ export function generateTurret(level) {
     projectileSize: 3 + damage / 3,
     projectileColor: color(),
     dps,
+    lastShot: 0,
   };
 }

@@ -1,6 +1,4 @@
-import Game from '../Game';
-
-export default function renderMap() {
+export default function renderMap(game) {
   const {
     ctx,
     gameWidth,
@@ -9,7 +7,7 @@ export default function renderMap() {
     path,
     gridWidth,
     gridHeight,
-  } = Game;
+  } = game;
 
   // background
   ctx.fillStyle = '#222';

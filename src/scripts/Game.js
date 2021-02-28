@@ -6,9 +6,12 @@ import generateTurrets from './functions/generateTurrets';
 import generateEnemies from './functions/generateEnemies';
 import { rand } from './functions/helpers';
 import renderMap from './functions/renderMap';
+import { socket } from '.';
+import Toolbar from './Toolbar';
+import Hotkeys from './Hotkeys';
 
 class Game {
-  constructor() {
+  constructor(options, isAttacker) {
     const canvas = (this.canvas = document.getElementById('game'));
     this.ctx = this.canvas.getContext('2d');
 
@@ -18,12 +21,14 @@ class Game {
     canvas.height = this.gameHeight;
     canvas.width = this.gameWidth;
 
-    this.gridWidth = 16;
-    this.gridHeight = 8;
-    this.cellSize = this.gameWidth / this.gridWidth;
+    this.gridWidth = options.gridWidth;
+    this.gridHeight = options.gridHeight;
+    this.cellSize = 50; // this.gameWidth / this.gridWidth;
 
     this.mouseX;
     this.mouseY;
+
+    this.isAttacker = isAttacker;
 
     this.selectedTurret;
     this.placingTurret;
@@ -33,40 +38,25 @@ class Game {
     this.money = 100;
     this.missed = 0;
 
-    this.wave = {
-      number: 0,
-    };
+    this.wave = options.wave;
 
-    this.turretTypes = generateTurrets();
-    this.enemyTypes = generateEnemies();
+    this.turretTypes = options.turretTypes;
+    this.enemyTypes = options.enemyTypes;
 
     this.turrets = [];
     this.projectiles = [];
     this.enemies = [];
 
-    this.path = generatePath(
-      this.gridWidth,
-      this.gridHeight,
-      (this.gridWidth * this.gridHeight) / 2
-    );
+    this.path = options.path;
 
-    this.advance();
+    this.toolbar = new Toolbar(this);
+    this.hotkeys = new Hotkeys(this);
 
     this.lastRender = Date.now();
 
     canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     canvas.addEventListener('mouseleave', this.onMouseLeave.bind(this));
     canvas.addEventListener('click', this.onClick.bind(this));
-
-    const loader = document.getElementById('loader');
-    const container = document.getElementById('container');
-    loader.classList.add('hide');
-    setTimeout(() => {
-      container.classList.add('descale');
-    }, 0);
-    setTimeout(() => {
-      loader.remove();
-    }, 300);
 
     this.draw = this.draw.bind(this);
 
@@ -84,7 +74,7 @@ class Game {
     const delta = now - this.lastRender;
     const deltaSeconds = delta / 1000;
 
-    renderMap();
+    renderMap(this);
 
     ctx.fillStyle = '#fff';
     ctx.font = '20px monospace';
@@ -116,56 +106,56 @@ class Game {
         // this.wave.killed++;
         continue;
       }
-      if (!enemy.nextSegment) {
-        const cellX = Math.floor(enemy.x / cellSize);
-        const cellY = Math.floor(enemy.y / cellSize);
-        const segmentIndex = this.path.findIndex(
-          (segment, idx) =>
-            (enemy.lastSegmentIndex == null || idx > enemy.lastSegmentIndex) &&
-            segment[0] === cellX &&
-            segment[1] === cellY
-        );
+      // if (!enemy.nextSegment) {
+      //   const cellX = Math.floor(enemy.x / cellSize);
+      //   const cellY = Math.floor(enemy.y / cellSize);
+      //   const segmentIndex = this.path.findIndex(
+      //     (segment, idx) =>
+      //       (enemy.lastSegmentIndex == null || idx > enemy.lastSegmentIndex) &&
+      //       segment[0] === cellX &&
+      //       segment[1] === cellY
+      //   );
 
-        const nextSegment = this.path[segmentIndex + 1];
+      //   const nextSegment = this.path[segmentIndex + 1];
 
-        enemy.lastSegmentIndex = segmentIndex;
-        enemy.lastSegment = this.path[segmentIndex];
-        enemy.nextSegment = nextSegment;
-      }
+      //   enemy.lastSegmentIndex = segmentIndex;
+      //   enemy.lastSegment = this.path[segmentIndex];
+      //   enemy.nextSegment = nextSegment;
+      // }
 
-      if (!enemy.nextSegment) {
-        // this.enemies.splice(i, 1);
-        this.wave.missed++;
-        this.missed++;
-        enemy.health = 0;
-        continue;
-      }
+      // if (!enemy.nextSegment) {
+      //   // this.enemies.splice(i, 1);
+      //   this.wave.missed++;
+      //   this.missed++;
+      //   enemy.health = 0;
+      //   continue;
+      // }
 
-      if (enemy.lastSegment[0] !== enemy.nextSegment[0]) {
-        if (this.getEnemyOffsetX(enemy) > enemy.x) {
-          enemy.x += enemy.speed * deltaSeconds;
-          if (this.getEnemyOffsetX(enemy) <= enemy.x) {
-            enemy.nextSegment = null;
-          }
-        } else if (this.getEnemyOffsetX(enemy) < enemy.x) {
-          enemy.x -= enemy.speed * deltaSeconds;
-          if (this.getEnemyOffsetX(enemy) >= enemy.x) {
-            enemy.nextSegment = null;
-          }
-        }
-      } else if (enemy.lastSegment[1] !== enemy.nextSegment[1]) {
-        if (this.getEnemyOffsetY(enemy) > enemy.y) {
-          enemy.y += enemy.speed * deltaSeconds;
-          if (this.getEnemyOffsetY(enemy) <= enemy.y) {
-            enemy.nextSegment = null;
-          }
-        } else if (this.getEnemyOffsetY(enemy) < enemy.y) {
-          enemy.y -= enemy.speed * deltaSeconds;
-          if (this.getEnemyOffsetY(enemy) >= enemy.y) {
-            enemy.nextSegment = null;
-          }
-        }
-      }
+      // if (enemy.lastSegment[0] !== enemy.nextSegment[0]) {
+      //   if (this.getEnemyOffsetX(enemy) > enemy.x) {
+      //     enemy.x += enemy.speed * deltaSeconds;
+      //     if (this.getEnemyOffsetX(enemy) <= enemy.x) {
+      //       enemy.nextSegment = null;
+      //     }
+      //   } else if (this.getEnemyOffsetX(enemy) < enemy.x) {
+      //     enemy.x -= enemy.speed * deltaSeconds;
+      //     if (this.getEnemyOffsetX(enemy) >= enemy.x) {
+      //       enemy.nextSegment = null;
+      //     }
+      //   }
+      // } else if (enemy.lastSegment[1] !== enemy.nextSegment[1]) {
+      //   if (this.getEnemyOffsetY(enemy) > enemy.y) {
+      //     enemy.y += enemy.speed * deltaSeconds;
+      //     if (this.getEnemyOffsetY(enemy) <= enemy.y) {
+      //       enemy.nextSegment = null;
+      //     }
+      //   } else if (this.getEnemyOffsetY(enemy) < enemy.y) {
+      //     enemy.y -= enemy.speed * deltaSeconds;
+      //     if (this.getEnemyOffsetY(enemy) >= enemy.y) {
+      //       enemy.nextSegment = null;
+      //     }
+      //   }
+      // }
 
       enemy.render(ctx);
     }
@@ -192,57 +182,57 @@ class Game {
         ctx.closePath();
       }
 
-      if (now - turret.lastShot > turret.shotInterval) {
-        for (const idx in this.enemies) {
-          const enemy = this.enemies[idx];
-          if (enemy.health <= 0) {
-            continue;
-          }
-          const dist = Math.hypot(x - enemy.x, y - enemy.y);
-          if (dist < radiusPx) {
-            this.projectiles.push(
-              new Projectile({
-                x,
-                y,
-                speed: turret.projectileSpeed,
-                damage: turret.projectileDamage,
-                size: turret.projectileSize,
-                enemy,
-                color: turret.projectileColor,
-              })
-            );
-            turret.lastShot = now;
-            break;
-          }
-        }
-      }
+      // if (now - turret.lastShot > turret.shotInterval) {
+      //   for (const idx in this.enemies) {
+      //     const enemy = this.enemies[idx];
+      //     if (enemy.health <= 0) {
+      //       continue;
+      //     }
+      //     const dist = Math.hypot(x - enemy.x, y - enemy.y);
+      //     if (dist < radiusPx) {
+      //       this.projectiles.push(
+      //         new Projectile({
+      //           x,
+      //           y,
+      //           speed: turret.projectileSpeed,
+      //           damage: turret.projectileDamage,
+      //           size: turret.projectileSize,
+      //           enemy,
+      //           color: turret.projectileColor,
+      //         })
+      //       );
+      //       turret.lastShot = now;
+      //       break;
+      //     }
+      //   }
+      // }
     }
 
     // process projectiles
     for (let i = this.projectiles.length - 1; i > -1; i--) {
       const projectile = this.projectiles[i];
-      const enemy = projectile.enemy;
+      // const enemy = projectile.enemy;
 
-      if (!enemy || enemy.health <= 0) {
-        this.projectiles.splice(i, 1);
-        continue;
-      }
+      // if (!enemy || enemy.health <= 0) {
+      //   this.projectiles.splice(i, 1);
+      //   continue;
+      // }
 
-      projectile.update(deltaSeconds);
+      // projectile.update(deltaSeconds);
 
-      // hit
-      if (
-        Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) <
-        projectile.size
-      ) {
-        this.projectiles.splice(i, 1);
-        enemy.health -= projectile.damage;
-        if (enemy.health <= 0) {
-          this.wave.killed++;
-          this.money += enemy.money;
-        }
-        continue;
-      }
+      // // hit
+      // if (
+      //   Math.hypot(enemy.x - projectile.x, enemy.y - projectile.y) <
+      //   projectile.size
+      // ) {
+      //   this.projectiles.splice(i, 1);
+      //   enemy.health -= projectile.damage;
+      //   if (enemy.health <= 0) {
+      //     this.wave.killed++;
+      //     this.money += enemy.money;
+      //   }
+      //   continue;
+      // }
 
       projectile.render(ctx);
     }
@@ -282,7 +272,7 @@ class Game {
     }
 
     if (this.wave.finishedAt && this.wave.finishedAt + 1000 < now) {
-      this.advance();
+      // this.advance();
     }
 
     this.lastRender = now;
@@ -324,9 +314,10 @@ class Game {
         this.placingTurret.gridY = gridY;
         turret = new Turret(this.placingTurret);
         this.money -= this.placingTurret.price;
+        socket.emit('place_turret', this.placingTurret);
         this.placingTurret = null;
 
-        this.turrets.push(turret);
+        // this.turrets.push(turret);
       } else {
         this.placingTurret = null;
         return;
@@ -355,7 +346,6 @@ class Game {
     this.wave.inProgress = true;
 
     for (let idx in this.wave.enemyTypes) {
-      const size = this.wave.enemyTypes[idx].size;
       setTimeout(() => {
         this.enemies.push(
           new Enemy(
@@ -377,41 +367,6 @@ class Game {
     this.selectedTurret = null;
   }
 
-  advance() {
-    this.enemies = [];
-    this.projectiles = [];
-
-    const number = this.wave.number + 1;
-
-    const enemyBudget = (10 + number) * 14;
-    let budgetLeft = enemyBudget;
-    const enemyTypes = [];
-
-    while (budgetLeft > 0) {
-      const possibleEnemyTypes = this.enemyTypes.filter(
-        (enemyType) => enemyType.level <= budgetLeft
-      );
-
-      if (!possibleEnemyTypes.length) {
-        break;
-      }
-      const enemyType =
-        possibleEnemyTypes[rand(0, possibleEnemyTypes.length - 1)];
-      enemyTypes.push(enemyType);
-      budgetLeft -= enemyType.level;
-    }
-
-    this.wave = {
-      number,
-      total: enemyTypes.length,
-      killed: 0,
-      missed: 0,
-      inProgress: false,
-      finishedAt: null,
-      enemyTypes,
-    };
-  }
-
   sellSelectedTurret() {
     if (!this.selectedTurret) {
       return;
@@ -428,4 +383,4 @@ class Game {
   }
 }
 
-export default new Game();
+export default Game;
